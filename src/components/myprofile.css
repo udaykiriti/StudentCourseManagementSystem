@@ -1,0 +1,36 @@
+.my-profile {
+  padding: 20px;
+}
+
+.profile-table {
+  margin-top: 20px;
+  width: 100%;
+  border-collapse: separate; /* Separate borders */
+  border-spacing: 0; /* No spacing between borders */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Add shadow */
+  border-radius: 8px; /* Rounded corners */
+}
+
+.profile-table th,
+.profile-table td {
+  padding: 10px;
+  text-align: left;
+}
+
+.profile-table th {
+  background-color: #f2f2f2;
+}
+
+.profile-table th.firstcolumn,
+.profile-table td.firstcolumn {
+  width: 200px;
+}
+
+.profile-table td {
+  vertical-align: top;
+  border-bottom: 1px solid #ccc; /* Border bottom for each row */
+}
+
+.profile-table tr:last-child td {
+  border-bottom: none; /* Remove border for the last row */
+}

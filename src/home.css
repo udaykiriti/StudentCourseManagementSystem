@@ -1,0 +1,168 @@
+.full-height {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  background-color: #2c3e50; /* Dark Blue */
+  color: #ffffff; /* White */
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+}
+
+.menubar {
+  flex-basis: 20%;
+  background-color: #34495e; /* Dark Grey */
+  color: #ffffff; /* White */
+  padding: 10px;
+}
+
+.menuheader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.menuheader img {
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
+}
+
+.menu {
+  overflow-y: auto;
+}
+
+.outlet {
+  flex: 1;
+  padding: 10px;
+}
+
+.footer {
+  background-color: #2c3e50; /* Dark Blue */
+  color: #ffffff; /* White */
+  padding: 10px;
+  text-align: center;
+}
+
+.menubar ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.menubar ul li {
+  margin-bottom: 10px;
+  padding: 10px; /* Increase padding for larger boxes */
+  transition: background-color 0.3s ease; /* Smooth transition */
+  font-size: 16px; /* Increase font size */
+}
+
+.smenu,
+.amenu,
+.fmenu
+ {
+  display: none;
+  border-radius: 15px; /* Increase the curve for highlight */
+  padding: 10px; /* Increase padding for larger boxes */
+  background-color: #2980b9; /* Blue */
+  font-size: 14px; /* Increase font size */
+}
+/* Hover effect for submenu items */
+.smenu label:hover,
+.amenu label:hover,
+.fmenu label:hover {
+  background-color: #3498db; /* Light Blue */
+  cursor: pointer;
+}
+.smenu label,
+.amenu label,
+.fmenu label {
+  display: block;
+  margin-bottom: 5px; /* Add margin between submenu items */
+  padding: 8px; /* Add padding for better spacing */
+  border-bottom: 1px solid #ffffff; /* Add border as divider */
+}
+
+/* Remove border from the last submenu item */
+.smenu label:last-child,
+.amenu label:last-child,
+.fmenu label:last-child {
+  border-bottom: none;
+}
+
+/* Hover effect for submenu items */
+.smenu label:hover,
+.amenu label:hover,
+.fmenu label:hover {
+  background-color: #3498db; /* Light Blue */
+  cursor: pointer;
+}
+/* Vertical alignment for submenu items */
+.smenu label,
+.amenu label,
+.fmenu label {
+  display: block;
+  margin-bottom: 5px; /* Add margin between submenu items */
+}
+
+/* Hover effect for menu items */
+.menubar ul li:hover {
+  background-color: #2c3e50; /* Dark Blue */
+  cursor: pointer;
+}
+
+/* Active menu item style */
+.smenu label.active,
+.amenu label.active,
+.fmenu label.active {
+  font-weight: bold;
+  color: #e41111; /* White */
+}
+
+/* Iframe styles */
+#module {
+  width: 100%;
+  height: calc(100% - 30px);
+  border: none;
+}
+
+/* Titlebar styles */
+#titlebar {
+  padding: 10px;
+  background-color: #ecf0f1; /* Light Grey */
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+/* Logout button and user info styles */
+.user-info {
+  display: flex;
+  align-items: center;
+}
+
+.logout-container {
+  display: flex;
+  align-items: center;
+}
+
+#HL1 {
+  margin-right: 10px;
+}
+
+#logout-icon {
+  width: 16px;
+  height: 16px;
+  margin-left: auto; /* Push the logout icon to the right */
+}
+
+#HL1:hover {
+  color: #3498db; /* Blue */
+}
