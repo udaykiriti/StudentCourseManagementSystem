@@ -1,0 +1,42 @@
+/* deletefaculty.css */
+
+.delete-faculty-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 50px;
+}
+
+.delete-faculty-form h3 {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #3f51b5;
+}
+
+.delete-faculty-form input {
+    width: 300px;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.delete-faculty-form .delete-button {
+    background-color: #4a18d3;
+    color: white;
+    padding: 5px 10px; /* Adjusted padding to make the button smaller */
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px; /* Adjusted font size */
+    border: none;
+    border-radius: 3px; /* Adjusted border radius */
+    cursor: pointer;
+    width: 100px; /* Adjusted width */
+    height: 30px; /* Adjusted height */
+}
+
+.delete-faculty-form .delete-button:hover {
+    background-color: #d32f2f;
+}

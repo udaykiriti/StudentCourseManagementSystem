@@ -1,0 +1,46 @@
+/* feedback.css */
+
+.feedback-container-feedback {
+  max-width: 200%; /* Set max-width to 100% to fit the page */
+  margin: 10px auto; 
+  padding: 10px; 
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.feedback-form-feedback {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px; 
+}
+.question-feedback {
+  margin-bottom: 10px; 
+}
+
+.options-feedback {
+  display: flex;
+  flex-direction: column;
+}
+
+label-feedback {
+  margin-bottom: 5px; 
+}
+
+.submit-button {
+  padding: 5px 0;
+  border: none;
+  border-radius: 5px;
+  background-color: #1172da; 
+  color: #fff;
+  cursor: pointer;
+  width: 150px; 
+  height: 30px;
+  font-size: 16px;
+  margin: 0 auto;
+  display: block; 
+}
+
+.submit-button:hover {
+  background-color: #0056b3;
+}
