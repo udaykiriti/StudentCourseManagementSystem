@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Axios from 'axios';
-import './feedback.css';
 
 function Feedback() {
   const [feedback, setFeedback] = useState(Array(10).fill(''));
@@ -16,8 +15,8 @@ function Feedback() {
     try {
       const response = await Axios.get('http://localhost:5000/viewcourses');
       if (response.status === 200 && response.data.length > 0) {
-        setCourseNames(response.data.map(course => course.courseName)); 
-        setSelectedCourse(response.data[0].courseName); 
+        setCourseNames(response.data.map(course => course.courseName));
+        setSelectedCourse(response.data[0].courseName);
       }
     } catch (error) {
       console.error('Error fetching course names:', error);
@@ -59,7 +58,10 @@ function Feedback() {
 
   const handleSubmit = async () => {
     try {
-      const response = await Axios.post('http://localhost:5000/feedback', { feedback, courseName: selectedCourse });
+      const response = await Axios.post('http://localhost:5000/feedback', {
+        feedback,
+        courseName: selectedCourse
+      });
       if (response.status === 200) {
         alert("Feedback submitted successfully");
       } else {
@@ -72,39 +74,76 @@ function Feedback() {
   };
 
   return (
-    <div className="feedback-container-feedback">
-      <h2>Feedback Form</h2>
-      {error && <p className="error-message">{error}</p>}
-      <form className="feedback-form-feedback">
-        <div>
-          <label htmlFor="courseSelect">Select Course:</label>
-          <select id="courseSelect" onChange={(e) => setSelectedCourse(e.target.value)} value={selectedCourse}>
-            {courseNames.map((courseName, index) => (
-              <option key={index} value={courseName}>{courseName}</option>
-            ))}
-          </select>
-        </div>
-        {questions.map((question, index) => (
-          <div key={index} className="question-feedback">
-            <p>{question}</p>
-            <div className="options-feedback">
-              {options[index].map((option, optionIndex) => (
-                <label key={optionIndex}>
-                  <input
-                    type="radio"
-                    name={`question-${index}`}
-                    value={option}
-                    checked={feedback[index] === option}
-                    onChange={() => handleOptionChange(index, optionIndex)}
-                  />
-                  {option}
-                </label>
+    <div className="min-h-screen bg-gray-50 py-10 px-4 flex justify-center">
+      <div className="w-full max-w-3xl bg-white shadow-lg rounded-2xl p-8">
+        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">
+          Feedback Form
+        </h2>
+
+        {error && (
+          <p className="text-red-600 text-center mb-4 font-medium">{error}</p>
+        )}
+
+        <form className="space-y-6">
+          <div>
+            <label
+              htmlFor="courseSelect"
+              className="block font-semibold text-gray-700 mb-2"
+            >
+              Select Course:
+            </label>
+            <select
+              id="courseSelect"
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              value={selectedCourse}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {courseNames.map((courseName, index) => (
+                <option key={index} value={courseName}>
+                  {courseName}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
-        ))}
-        <button className="submit-button" type="button" onClick={handleSubmit}>Submit Feedback</button>
-      </form>
+
+          {questions.map((question, index) => (
+            <div
+              key={index}
+              className="bg-gray-50 p-4 rounded-lg border border-gray-200"
+            >
+              <p className="font-medium text-gray-800 mb-3">
+                {index + 1}. {question}
+              </p>
+              <div className="space-y-2">
+                {options[index].map((option, optionIndex) => (
+                  <label
+                    key={optionIndex}
+                    className="flex items-center space-x-2 cursor-pointer"
+                  >
+                    <input
+                      type="radio"
+                      name={`question-${index}`}
+                      value={option}
+                      checked={feedback[index] === option}
+                      onChange={() => handleOptionChange(index, optionIndex)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-gray-700">{option}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <button
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg shadow-md transition duration-200"
+            type="button"
+            onClick={handleSubmit}
+          >
+            Submit Feedback
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

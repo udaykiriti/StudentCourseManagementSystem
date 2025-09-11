@@ -1,167 +1,397 @@
 import React from 'react';
-import './home.css';
-import logouticon from './images/logout.png';
-import { callApi, errorResponse, getSession, setSession } from './main';
-import menuicon from './images/menu.png';
+import { GraduationCap, Menu, LogOut, User, ChevronRight, ChevronDown, BookOpen, Users, Settings, MessageSquare, ClipboardCheck } from 'lucide-react';
 
-const HS1 = {"padding-left" : "5px", "font-weight" : "bold"};
-const HS2 = {"float" : "right", "padding-right" : "5px", "cursor" : "pointer"};
-const HS3 = {"float" : "right", "height" : "16px", "margin-top" : "6px", "cursor" : "pointer"};
-const HS4 = {"float" : "right", "padding-right" : "10px"};
-
-export function loadFMenu(res) {
-    var data = JSON.parse(res);
-    var fmenuitems = "";
-    for(var x in data) {
-        fmenuitems += `<li>
-                        <label id='${data[x].mid}L' >${data[x].mtitle}</label>
-                        <div id='${data[x].mid}' class='fmenu'></div>
-                      </li>`;
-    }
-    var mlist = document.getElementById('mlist');
-    mlist.innerHTML = fmenuitems;
-
-    for(x in data) {
-        document.getElementById(`${data[x].mid}L`).addEventListener("click", showFMenu.bind(null, data[x].mid));
-    }
-}
-
-export function showFMenu(mid) {
-    var surl = "http://localhost:5000/fmenus"; 
-    var ipdata = JSON.stringify({
-        mid : mid
+// API utility functions
+const callApi = async (method, url, data, successCallback, errorCallback) => {
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
     });
-    callApi("POST", surl, ipdata, loadFMenus, errorResponse);
-        
-    var fmenu = document.getElementById(mid);
-    if(fmenu.style.display === "block")
-        fmenu.style.display = "none";
-    else
-        fmenu.style.display = "block";
-}
+    
+    const result = await response.json();
+    successCallback(JSON.stringify(result));
+  } catch (error) {
+    errorCallback(error);
+  }
+};
 
-export function loadFMenus(res) {
-    var data = JSON.parse(res);
-    var fmenuitems = "";
-    var fmenu = document.getElementById(`${data[0].mid}`); // Get the parent fmenu element
-    for(var x of data) {
-        fmenuitems += `<label id='${x.smid}'>${x.smtitle}</label>`;
-    }
-    fmenu.innerHTML = fmenuitems;
-// eslint-disable-next-line
-    for(var x of data) {
-        document.getElementById(`${x.smid}`).addEventListener("click", loadFModule.bind(null, x.smid));
-    }
-}
+const errorResponse = (error) => {
+  console.error('API Error:', error);
+  alert('An error occurred. Please try again.');
+};
 
-export function loadFModule(smid) {
-   var titlebar = document.getElementById('titlebar');
-   var module = document.getElementById('module');
-   switch(smid) {
-            case "F00101":
-                module.src = "/facultycomponents/book";
-                titlebar.innerText = "Add Course";
-                break;
-            case "F00102":
-                module.src = "/facultycomponents/viewcourses";
-                titlebar.innerText = "View Courses";
-                break;
-            case "F10101":
-                module.src = "/components/myprofile";
-                titlebar.innerText = "My profile";
-                break; 
-            case "F10102":
-                module.src = "/components/changepassword";
-                titlebar.innerText = "Change Password";
-                break;
-            case "F20101":
-                module.src = "/facultycomponents/viewstudent";
-                titlebar.innerText = "View Student";
-                break;
-            case "F20102":
-                module.src = "/facultycomponents/addstudent";
-                titlebar.innerText = "Add Student";
-                break;
-            case "F20103":
-                    module.src = "/facultycomponents/deletestudent";
-                    titlebar.innerText = "Delete Student";
-                    break;    
-            case "F30101":
-                module.src = "/facultycomponents/attendance";
-                titlebar.innerText = "Mark Attendance";
-                break;  
-            case "F30102":
-                module.src = "/facultycomponents/viewattendance";
-                titlebar.innerText = "View Attendance";
-                break;  
-            case "F40101":
-                module.src = "/facultycomponents/viewfeedback";
-                titlebar.innerText = "View Feedback";
-                break;            
-            default:
-                module.src = "";
-                titlebar.innerText = "";
-   }
-}
+const getSession = (key) => {
+  return sessionStorage.getItem(key) || '';
+};
+
+const setSession = (key, value, minutes) => {
+  if (minutes < 0) {
+    sessionStorage.removeItem(key);
+  } else {
+    sessionStorage.setItem(key, value);
+  }
+};
+
+// Menu icon mapping for faculty
+const getMenuIcon = (mid) => {
+  switch(mid) {
+    case 'F001': return <BookOpen className="w-4 h-4" />;
+    case 'F101': return <Settings className="w-4 h-4" />;
+    case 'F201': return <Users className="w-4 h-4" />;
+    case 'F301': return <ClipboardCheck className="w-4 h-4" />;
+    case 'F401': return <MessageSquare className="w-4 h-4" />;
+    default: return <Menu className="w-4 h-4" />;
+  }
+};
 
 class FacultyHome extends React.Component {
     constructor() {
         super();
+        this.state = {
+            userInfo: { firstname: '', lastname: '' },
+            menuItems: [],
+            subMenus: {},
+            expandedMenus: {},
+            selectedModule: '',
+            titlebarText: '',
+            loading: true,
+            loadingSubMenu: {}
+        };
+        
         this.sid = getSession("sid");
-        if(this.sid === "")
+        console.log('Session ID:', this.sid); // Debug log
+        
+        if(this.sid === "" || this.sid === null) {
+            console.log('No session found, redirecting to login');
             window.location.replace("/");
+            return;
+        }
 
-        var url = "http://localhost:5000/uname";
-        var data = JSON.stringify({
-            emailid : this.sid
-        });
+        this.loadUserData();
+        this.loadMenuData();
+    }
+
+    loadUserData = () => {
+        const url = "http://localhost:5000/uname";
+        const data = {
+            emailid: this.sid
+        };
         callApi("POST", url, data, this.loadUname, errorResponse);
-
-        url = "http://localhost:5000/fmenu";
-        callApi("POST", url, "", loadFMenu, errorResponse);
     }
 
-    loadUname(res) {
-        var data = JSON.parse(res);
-        var HL1 = document.getElementById("HL1");
-        HL1.innerText = `${data[0].firstname} ${data[0].lastname}`;
+    loadMenuData = () => {
+        const url = "http://localhost:5000/fmenu";
+        callApi("POST", url, "", this.loadFMenu, errorResponse);
     }
 
-    logout() {
+    loadUname = (res) => {
+        try {
+            const data = JSON.parse(res);
+            if (data && data.length > 0) {
+                this.setState({ 
+                    userInfo: { 
+                        firstname: data[0].firstname || '', 
+                        lastname: data[0].lastname || ''
+                    },
+                    loading: false
+                });
+            } else {
+                this.setState({ loading: false });
+            }
+        } catch (error) {
+            console.error('Error parsing user data:', error);
+            this.setState({ loading: false });
+        }
+    }
+
+    loadFMenu = (res) => {
+        try {
+            const data = JSON.parse(res);
+            this.setState({ menuItems: data || [] });
+        } catch (error) {
+            console.error('Error parsing menu data:', error);
+            this.setState({ menuItems: [] });
+        }
+    }
+
+    showFMenu = (mid) => {
+        // Set loading state for this submenu
+        this.setState(prevState => ({
+            loadingSubMenu: {
+                ...prevState.loadingSubMenu,
+                [mid]: true
+            }
+        }));
+
+        const surl = "http://localhost:5000/fmenus"; 
+        const ipdata = {
+            mid: mid
+        };
+        
+        callApi("POST", surl, ipdata, (res) => this.loadFMenus(res, mid), errorResponse);
+        
+        this.setState(prevState => ({
+            expandedMenus: {
+                ...prevState.expandedMenus,
+                [mid]: !prevState.expandedMenus[mid]
+            }
+        }));
+    }
+
+    loadFMenus = (res, mid) => {
+        try {
+            const data = JSON.parse(res);
+            this.setState(prevState => ({
+                subMenus: {
+                    ...prevState.subMenus,
+                    [mid]: data || []
+                },
+                loadingSubMenu: {
+                    ...prevState.loadingSubMenu,
+                    [mid]: false
+                }
+            }));
+        } catch (error) {
+            console.error('Error parsing submenu data:', error);
+            this.setState(prevState => ({
+                subMenus: {
+                    ...prevState.subMenus,
+                    [mid]: []
+                },
+                loadingSubMenu: {
+                    ...prevState.loadingSubMenu,
+                    [mid]: false
+                }
+            }));
+        }
+    }
+
+    loadFModule = (smid, smtitle) => {
+        let moduleSrc = "";
+        let titleText = smtitle;
+        
+        switch(smid) {
+            case "F00101":
+                moduleSrc = "/facultycomponents/book";
+                titleText = "Add Course";
+                break;
+            case "F00102":
+                moduleSrc = "/facultycomponents/viewcourses";
+                titleText = "View Courses";
+                break;
+            case "F10101":
+                moduleSrc = "/components/myprofile";
+                titleText = "My Profile";
+                break;
+            case "F10102":
+                moduleSrc = "/components/changepassword";
+                titleText = "Change Password";
+                break;
+            case "F20101":
+                moduleSrc = "/facultycomponents/viewstudent";
+                titleText = "View Student";
+                break;
+            case "F20102":
+                moduleSrc = "/facultycomponents/addstudent";
+                titleText = "Add Student";
+                break;
+            case "F20103":
+                moduleSrc = "/facultycomponents/deletestudent";
+                titleText = "Delete Student";
+                break;
+            case "F30101":
+                moduleSrc = "/facultycomponents/attendance";
+                titleText = "Mark Attendance";
+                break;
+            case "F30102":
+                moduleSrc = "/facultycomponents/viewattendance";
+                titleText = "View Attendance";
+                break;
+            case "F40101":
+                moduleSrc = "/facultycomponents/viewfeedback";
+                titleText = "View Feedback";
+                break;
+            default:
+                moduleSrc = "";
+                titleText = smtitle || "";
+        }
+        
+        this.setState({
+            selectedModule: moduleSrc,
+            titlebarText: titleText
+        });
+    }
+
+    logout = () => {
         setSession("sid", "", -1);
         window.location.replace("/");
     }
 
     render() {
-        return(
-            <div className='full-height'>
-                <div className='header'>
-                    <label style={HS1}>Student Course Management System</label>
-                    <div className="user-info">
-                        <label id='HL1' style={HS4}></label>
-                        <div className="logout-container">
-                            <label style={HS2} onClick={this.logout}>Logout</label>
-                            <img src={logouticon} alt='' style={HS3} onClick={this.logout} />
+        const { 
+            userInfo, 
+            menuItems, 
+            subMenus, 
+            expandedMenus, 
+            selectedModule, 
+            titlebarText, 
+            loading, 
+            loadingSubMenu 
+        } = this.state;
+        
+        if (loading) {
+            return (
+                <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                    <div className="bg-white p-8 rounded-xl shadow-lg">
+                        <div className="flex items-center space-x-3">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                            <span className="text-gray-700">Loading...</span>
                         </div>
                     </div>
                 </div>
-                <div className='content'>
-                    <div className='menubar'>
-                        <div className='menuheader'>
-                            <img src={menuicon} alt='' />
-                            <label>MENU</label>
+            );
+        }
+
+        return (
+            <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col">
+                {/* Header */}
+                <div className="bg-white shadow-sm border-b-2 border-blue-600 py-3 px-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <GraduationCap className="w-6 h-6 text-blue-600" />
+                            <h1 className="text-xl font-bold text-gray-800">
+                                Student Course Management System
+                            </h1>
                         </div>
-                        <div className='menu'>
-                            <nav><ul id='mlist' className='mlist'></ul></nav>
+                        
+                        <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-2 text-gray-700">
+                                <User className="w-4 h-4" />
+                                <span className="font-medium text-sm">
+                                    {userInfo.firstname} {userInfo.lastname}
+                                </span>
+                            </div>
+                            <button
+                                onClick={this.logout}
+                                className="flex items-center space-x-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors duration-200"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                <span className="text-sm font-medium">Logout</span>
+                            </button>
                         </div>
-                    </div>
-                    <div className='outlet'> 
-                        <div id='titlebar'></div>
-                        <iframe id='module' src="" title="Module"></iframe>
                     </div>
                 </div>
-                <div className='footer'>
-                    Copyright @ KL University. All rights reserved.
+
+                {/* Main Content */}
+                <div className="flex-1 flex overflow-hidden">
+                    {/* Sidebar */}
+                    <div className="w-80 bg-white shadow-lg border-r border-gray-200 flex flex-col">
+                        {/* Menu Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4">
+                            <div className="flex items-center space-x-3">
+                                <Menu className="w-5 h-5" />
+                                <h2 className="text-lg font-semibold">Navigation Menu</h2>
+                            </div>
+                        </div>
+                        
+                        {/* Menu Items */}
+                        <div className="flex-1 overflow-y-auto p-4">
+                            <nav className="space-y-2">
+                                {menuItems.map((item) => (
+                                    <div key={item.mid} className="border border-gray-200 rounded-xl overflow-hidden">
+                                        <button
+                                            onClick={() => this.showFMenu(item.mid)}
+                                            className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-blue-50 transition-colors duration-200"
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                {getMenuIcon(item.mid)}
+                                                <span className="font-medium text-gray-700">
+                                                    {item.mtitle}
+                                                </span>
+                                            </div>
+                                            {expandedMenus[item.mid] ? 
+                                                <ChevronDown className="w-4 h-4 text-gray-500" /> : 
+                                                <ChevronRight className="w-4 h-4 text-gray-500" />
+                                            }
+                                        </button>
+                                        
+                                        {/* Submenu */}
+                                        {expandedMenus[item.mid] && (
+                                            <div className="bg-white border-t border-gray-100">
+                                                {loadingSubMenu[item.mid] ? (
+                                                    <div className="px-8 py-4">
+                                                        <div className="flex items-center space-x-2 text-gray-500 text-sm">
+                                                            <div className="animate-spin rounded-full h-3 w-3 border-b border-gray-400"></div>
+                                                            <span>Loading submenu...</span>
+                                                        </div>
+                                                    </div>
+                                                ) : subMenus[item.mid] && subMenus[item.mid].length > 0 ? (
+                                                    subMenus[item.mid].map((subItem, index) => (
+                                                        <button
+                                                            key={subItem.smid}
+                                                            onClick={() => this.loadFModule(subItem.smid, subItem.smtitle)}
+                                                            className={`w-full text-left px-8 py-3 text-sm text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200 flex items-center justify-between group ${
+                                                                index < subMenus[item.mid].length - 1 ? 'border-b border-gray-50' : ''
+                                                            }`}
+                                                        >
+                                                            <span>{subItem.smtitle}</span>
+                                                            <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        </button>
+                                                    ))
+                                                ) : (
+                                                    <div className="px-8 py-4 text-sm text-gray-500">
+                                                        No submenu items available
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </nav>
+                        </div>
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className="flex-1 flex flex-col p-6">
+                        {/* Title Bar */}
+                        {titlebarText && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-6 py-4 mb-6">
+                                <h3 className="text-xl font-semibold text-gray-800">
+                                    {titlebarText}
+                                </h3>
+                            </div>
+                        )}
+                        
+                        {/* Module Content */}
+                        <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            {selectedModule ? (
+                                <iframe 
+                                    src={selectedModule}
+                                    title="Module"
+                                    className="w-full h-full border-0"
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-gray-500">
+                                    <div className="text-center">
+                                        <GraduationCap className="w-16 h-16 mx-auto mb-4 text-blue-300" />
+                                        <p className="text-lg font-medium mb-2">Welcome to Faculty Dashboard</p>
+                                        <p className="text-sm">Select a menu item to get started</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="bg-white border-t border-gray-200 py-3 px-6">
+                    <p className="text-center text-gray-600 text-sm">
+                        Copyright @ KL University. All rights reserved.
+                    </p>
                 </div>
             </div>
         );

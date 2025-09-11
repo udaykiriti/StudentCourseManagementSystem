@@ -9,7 +9,7 @@ const { ObjectId } = require('mongodb');
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 // Configuration (MongoDB)
-const url = "mongodb+srv://admin:admin@cluster0.jlh9clx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const url = "mongodb://localhost:27017/MSWD";
 const client = new MongoClient(url);
 // Define roles
 const ROLES = {
@@ -60,16 +60,26 @@ app.post('/login/signin', async function(req, res){
     }
 });
 // HOME MODULE
+// In your server.js, update this endpoint:
+// Replace your existing /uname endpoint
 app.post('/uname', async function(req, res){
+    let localClient;
     try {
-        const conn = await client.connect();
-        const db = conn.db('MSWD');
+        console.log('Received request body:', req.body);
+        localClient = new MongoClient(url);
+        await localClient.connect();
+        const db = localClient.db('MSWD');
         const users = db.collection('users');
-        const data = await users.find(req.body, { projection: { firstname: true, lastname: true } }).toArray();
-        conn.close();
+        const data = await users.find({ emailid: req.body.emailid }, { 
+            projection: { firstname: 1, lastname: 1, _id: 0 } 
+        }).toArray();
+        console.log('User data found:', data);
         res.json(data);
     } catch (err) {
+        console.error('Database error:', err);
         res.status(500).json({ error: err.message });
+    } finally {
+        if (localClient) await localClient.close();
     }
 });
 // Faculty UNAME
@@ -212,7 +222,9 @@ app.get('/viewcourses', async (req, res) => {
         if (courseData.length > 0) {
             res.json(courseData);
         } else {
-            res.status(404).json({ error: 'No courses found' });
+            // It's better to return an empty array than a 404
+            // if no courses are found, so the frontend doesn't treat it as an error.
+            res.json([]);
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -249,7 +261,7 @@ app.get('/coursenames', async (req, res) => {
         if (courseData.length > 0) {
             res.json(courseData);
         } else {
-            res.status(404).json({ error: 'No courses found' });
+            res.json([]);
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -397,7 +409,7 @@ app.get('/studentcourse', async (req, res) => {
         if (courseData.length > 0) {
             res.json(courseData);
         } else {
-            res.status(404).json({ error: 'No courses found' });
+            res.json([]);
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -410,7 +422,7 @@ app.delete('/deletecourse/:id', async (req, res) => {
         const db = conn.db('MSWD');
         const courses = db.collection('addcourse');
         // Delete the course from the database
-        const result = await courses.deleteOne({ _id: ObjectId(courseId) });
+        const result = await courses.deleteOne({ _id: new ObjectId(courseId) });
         conn.close();
 
         if (result.deletedCount === 1) {
@@ -424,17 +436,17 @@ app.delete('/deletecourse/:id', async (req, res) => {
 });
 app.delete('/deletestudent/:id', async (req, res) => {
     try {
-        const studentId = req.params.id; // Corrected variable name from facultyId to studentId
+        const studentId = req.params.id; 
         const conn = await client.connect();
         const db = conn.db('MSWD');
         const studentCollection = db.collection('Addstudent');
-        const deletedStudent = await studentCollection.deleteOne({ studentId: studentId }); // Corrected variable name from deletedFaculty to deletedStudent
+        const deletedStudent = await studentCollection.deleteOne({ studentId: studentId });
         conn.close();
 
-        if (deletedStudent.deletedCount === 1) { // Corrected variable name from deletedFaculty to deletedStudent
+        if (deletedStudent.deletedCount === 1) { 
             res.json("Student deleted successfully.");
         } else {
-            res.status(404).json({ error: "Student not found." }); // Changed error message to match the context
+            res.status(404).json({ error: "Student not found." });
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -512,11 +524,15 @@ app.post('/resetpassword', async function(req, res) {
         res.status(500).json({ error: err.message });
     }
 });
+
 //ATTENDANCE
 // Endpoint to submit attendance
 app.post('/submitattendance', async (req, res) => {
+    let conn;
     try {
-        const db = client.db('MSWD');
+        // *** FIX: Establish connection before using the database ***
+        conn = await client.connect();
+        const db = conn.db('MSWD');
         const attendanceCollection = db.collection('attendance');
 
         const { course, attendanceData } = req.body;
@@ -525,17 +541,24 @@ app.post('/submitattendance', async (req, res) => {
             course: course,
             attendanceData: attendanceData,
         });
-
-        if (result.insertedCount === 1) {
+        
+        // *** FIX: Use modern result property 'insertedId' to check for success ***
+        if (result.insertedId) {
             res.status(200).json({ message: 'Attendance data stored successfully' });
         } else {
-            res.status(500).json({ error: 'Failed to store attendance data' });
+            throw new Error('Failed to store attendance data');
         }
     } catch (error) {
         console.error('Error storing attendance data:', error);
         res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        // *** FIX: Ensure connection is closed ***
+        if(conn) {
+            await conn.close();
+        }
     }
 });
+
 // Endpoint to fetch attendance data
 app.get('/viewattendance', async (req, res) => {
     try {
@@ -555,78 +578,47 @@ app.get('/viewattendance', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
 app.post('/feedback', async (req, res) => {
+    let conn;
     try {
-        const client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        conn = await client.connect();
+        const db = conn.db('MSWD');
         const feedbackCollection = db.collection('feedback');
         const result = await feedbackCollection.insertOne(req.body);
-        if (result.insertedCount === 1) {
+        if (result.insertedId) {
             res.status(200).json({ message: 'Feedback submitted successfully' });
         } else {
-            res.status(500).json({ error: 'Failed to store feedback data' });
+            throw new Error('Failed to store feedback data');
         }
-        client.close();
     } catch (error) {
         console.error('Error storing feedback data:', error);
         res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        if(conn) {
+           await conn.close();
+        }
     }
 });
-app.post('/viewfeedback', async (req, res) => {
-    try {
-        const client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
-        const feedbackCollection = db.collection('feedback');
-        const feedbackData = await feedbackCollection.find({}).toArray();
-        await client.close();
-        res.status(200).json(feedbackData);
-    } catch (error) {
-        console.error('Error fetching feedback data:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
+
 app.get('/viewfeedback', async (req, res) => {
     try {
-      const client = new MongoClient(url);
-      await client.connect();
-      const db = client.db('MSWD');
+      const conn = await client.connect();
+      const db = conn.db('MSWD');
       const feedbackCollection = db.collection('feedback');
       const feedbackData = await feedbackCollection.find({}).toArray();
       res.status(200).json(feedbackData);
       
-      client.close();
+      conn.close();
     } catch (error) {
       console.error('Error fetching feedback data:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
-  });
-  app.post('/submitAttendance', async (req, res) => {
-    try {
-        await client.connect();
-        const db = client.db('MSWDPro');
-        const attendanceCollection = db.collection('attendance');
-        const attendanceDocument = {
-            courseName: req.body.courseName, // Include the course name in the document
-            date: req.body.date,
-            presentStudents: req.body.presentStudents.map(student => ({
-                emailid: student.emailid,
-                studentName: student.studentName,
-                attendance: student.present ? 'present' : 'absent'
-            }))
-        };
+});
 
-        const result = await attendanceCollection.insertOne(attendanceDocument);
-
-        if (result.insertedCount === 1) {
-            res.status(200).json({ message: 'Attendance submitted successfully' });
-        } else {
-            res.status(200).json({ message: 'Failed to submit attendance' });
-        }
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    } finally {
-        await client.close();
-    }
+app.post('/submitAssignment', async (req, res) => {
+    // This route needs to handle file uploads, which requires 'multer' or a similar library.
+    // The current setup does not support file uploads.
+    // This is a placeholder response.
+    res.status(500).json({ success: false, message: 'File upload not implemented on the server.' });
 });
