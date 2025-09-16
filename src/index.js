@@ -24,12 +24,14 @@ import ViewAttendance from "./facultycomponents/viewattendance";
 import FeedBack from './components/feedback';
 import ViewFeedBack from './admincomponents/viewfeedback';
 import SubmitAssignment from './components/submitassignment';
+import ForgotPassword from './forgotpassword'; // <-- IMPORT THE NEW COMPONENT
 
 function Website() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/forgotpassword" element={<ForgotPassword />} /> {/* <-- ADD THIS NEW ROUTE */}
         <Route path="/studenthome" element={<StudentHome/>} />
         <Route path="/components/changepassword" element={<ChangePassword />} />
         <Route path="/facultyhome" element={<FacultyHome />} />
@@ -51,6 +53,8 @@ function Website() {
         <Route path="/components/feedback" element={<FeedBack />} />
         <Route path="/admincomponents/viewfeedback" element={<ViewFeedBack />} />
         <Route path="/components/submitassignment" element={<SubmitAssignment />} />
+        <Route path="/forgotpassword" element={<ForgotPassword />} />
+        
       </Routes>
     </BrowserRouter>
   );

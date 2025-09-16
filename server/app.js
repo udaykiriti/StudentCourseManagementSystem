@@ -7,6 +7,18 @@ app.use(cors());
 const nodemailer = require('nodemailer');
 const { ObjectId } = require('mongodb');
 const PORT = process.env.PORT || 5000;
+
+// --- START: New additions for Forgot Password ---
+// In-memory OTP storage. Note: This is for demonstration. In a production environment,
+// you should store OTPs in your database (e.g., in the user's document with an expiry timestamp).
+let otps = {};
+
+// Helper function to generate a 6-digit OTP
+function generateOTP() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+// --- END: New additions for Forgot Password ---
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 // Configuration (MongoDB)
 const url = "mongodb://localhost:27017/MSWD";
@@ -39,7 +51,9 @@ app.post('/registration/signup', async function(req, res){
         const conn = await client.connect();
         const db = conn.db('MSWD');
         const users = db.collection('users');
-        const data = await users.insertOne(req.body);
+        // Default role to "student"
+        const newUser = { ...req.body, role: 'student' };
+        const data = await users.insertOne(newUser);
         conn.close();
         res.json("Registered successfully...");
     } catch (err) {
@@ -52,9 +66,13 @@ app.post('/login/signin', async function(req, res){
         const conn = await client.connect();
         const db = conn.db('MSWD');
         const users = db.collection('users');
-        const data = await users.count(req.body);
+        const user = await users.findOne({ emailid: req.body.emailid, pwd: req.body.pwd });
         conn.close();
-        res.json(data);
+        if (user) {
+            res.json({ success: true, role: user.role });
+        } else {
+            res.json({ success: false });
+        }
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -70,8 +88,8 @@ app.post('/uname', async function(req, res){
         await localClient.connect();
         const db = localClient.db('MSWD');
         const users = db.collection('users');
-        const data = await users.find({ emailid: req.body.emailid }, { 
-            projection: { firstname: 1, lastname: 1, _id: 0 } 
+        const data = await users.find({ emailid: req.body.emailid }, {
+            projection: { firstname: 1, lastname: 1, _id: 0 }
         }).toArray();
         console.log('User data found:', data);
         res.json(data);
@@ -201,7 +219,7 @@ app.post('/myprofile/info', async (req, res) => {
         const users = db.collection('users');
         const userData = await users.findOne({ emailid: req.body.emailid });
         conn.close();
-        
+
         if (userData) {
             res.json([userData]);
         } else {
@@ -222,8 +240,6 @@ app.get('/viewcourses', async (req, res) => {
         if (courseData.length > 0) {
             res.json(courseData);
         } else {
-            // It's better to return an empty array than a 404
-            // if no courses are found, so the frontend doesn't treat it as an error.
             res.json([]);
         }
     } catch (err) {
@@ -231,16 +247,16 @@ app.get('/viewcourses', async (req, res) => {
     }
 });
 // routes for different roles
-// Faculty 
+// Faculty
 app.post('/facultypage', checkRole(ROLES.FACULTY), async function (req, res) {
     try {
-        // Logic specific to faculty 
+        // Logic specific to faculty
         res.json({ message: 'Welcome to Faculty ' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
-// Admin 
+// Admin
 app.post('/adminpage', checkRole(ROLES.ADMIN), async function (req, res) {
     try {
         // Logic specific to admin page
@@ -267,7 +283,7 @@ app.get('/coursenames', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-//posting add course of student to database 
+//posting add course of student to database
 app.post('/addcourse', async function(req, res){
     try {
         const conn = await client.connect();
@@ -305,7 +321,7 @@ app.post('/addstudent', async (req, res) => {
         const conn = await client.connect();
         const db = conn.db('MSWD');
         const students = db.collection('Addstudent');
-        
+
         const existingStudent = await students.findOne({ studentId: req.body.studentId });
         if (existingStudent) {
             conn.close();
@@ -350,7 +366,7 @@ app.get('/api/faculty', async (req, res) => {
         const conn = await client.connect();
         const db = conn.db('MSWD');
         const faculties = db.collection('addfaculty');
-        
+
         // Check if faculty ID already exists
         const existingFaculty = await faculties.findOne({ facultyId: req.body.facultyId });
         if (existingFaculty) {
@@ -436,14 +452,14 @@ app.delete('/deletecourse/:id', async (req, res) => {
 });
 app.delete('/deletestudent/:id', async (req, res) => {
     try {
-        const studentId = req.params.id; 
+        const studentId = req.params.id;
         const conn = await client.connect();
         const db = conn.db('MSWD');
         const studentCollection = db.collection('Addstudent');
         const deletedStudent = await studentCollection.deleteOne({ studentId: studentId });
         conn.close();
 
-        if (deletedStudent.deletedCount === 1) { 
+        if (deletedStudent.deletedCount === 1) {
             res.json("Student deleted successfully.");
         } else {
             res.status(404).json({ error: "Student not found." });
@@ -452,85 +468,99 @@ app.delete('/deletestudent/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-app.post('/sendemail', async function(req, res){
-    try
-    {
-        var transport = nodemailer.createTransport({
-            service: "gmail",
-            host: "smtp.gmail.com",
-            port: 445,
-            secure: true,
-            auth:{user: "gollaprashanth5@gmail.com", pass: "acfhxzispfidsduc"}
-        });
 
-        var emaildata = {
-            from: "gollaprashanth5@gmail.com",
-            to: "prasanthgolla29@gmail.com",
-            subject: "Testing Email 2.0",
-            text: "This is a testing email message..."
-        };
-
-        transport.sendMail(emaildata, function(err, info){
-            if(err)
-                return res.json("Failed to sent Email");
-
-            res.json("Email sent successfully");
-        });
-    }catch(err)
-    {
-        res.json(err).status(404);
-    }
-});
+// --- START: Updated Password Reset Endpoints ---
 app.post('/sendotp', async function(req, res) {
+    let conn;
     try {
-        const email = req.body.email;
+        const email = req.body.emailid;
+        if (!email) {
+            return res.status(400).json({ error: 'Email ID is required' });
+        }
+
+        conn = await client.connect();
+        const db = conn.db('MSWD');
+        const users = db.collection('users');
+        const user = await users.findOne({ emailid: email });
+
+        if (!user) {
+            await conn.close();
+            return res.status(404).json({ error: 'Email not found. Please enter a registered email address.' });
+        }
+
         const otp = generateOTP();
-        otps[email] = otp;
+        otps[email] = { otp: otp, timestamp: Date.now() };
+
         const transport = nodemailer.createTransport({
             service: 'gmail',
             auth: {
-                user: 'gollaprashanth5@gmail.com', 
-                pass: 'acfhxzispfidsduc'
+                user: 'prasanthgolla29@gmail.com',
+                pass: 'hdqv ofhc xkdk apnn'
             }
         });
+
         const mailOptions = {
-            from: 'gollaprashanth5@gmail.com',
+            from: 'prasanthgolla29@gmail.com',
             to: email,
             subject: 'Password Reset OTP',
-            text: `Your OTP for password reset is: ${otp}`
+            text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`
         };
+
         await transport.sendMail(mailOptions);
         res.json({ message: 'OTP sent successfully' });
+
     } catch (err) {
+        console.error("Error in /sendotp:", err);
         res.status(500).json({ error: err.message });
+    } finally {
+        if (conn) {
+            await conn.close();
+        }
     }
 });
+
 app.post('/resetpassword', async function(req, res) {
+    let conn;
     try {
-        const email = req.body.email;
-        const otp = req.body.otp;
-        const newPassword = req.body.newPassword;
-        if (otps[email] && otps[email] === parseInt(otp)) {
-            const conn = await client.connect();
+        const { emailid, otp, newPassword } = req.body;
+        const storedOtpData = otps[emailid];
+
+        // Check if OTP exists and is not expired (10 minutes validity)
+        if (storedOtpData && storedOtpData.otp === otp) {
+            const now = Date.now();
+            const otpTimestamp = storedOtpData.timestamp;
+            if (now - otpTimestamp > 10 * 60 * 1000) { // 10 minutes expiry
+                delete otps[emailid];
+                return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+            }
+
+            conn = await client.connect();
             const db = conn.db('MSWD');
             const users = db.collection('users');
-            await users.updateOne({ email: email }, { $set: { password: newPassword } });
-            delete otps[email];
+            // Use 'emailid' and 'pwd' to match your schema
+            await users.updateOne({ emailid: emailid }, { $set: { pwd: newPassword } });
+            delete otps[emailid]; // OTP is used, so delete it
             res.json({ message: 'Password reset successful' });
         } else {
             res.status(400).json({ error: 'Invalid OTP' });
         }
     } catch (err) {
+        console.error("Error in /resetpassword:", err);
         res.status(500).json({ error: err.message });
+    } finally {
+        if (conn) {
+            await conn.close();
+        }
     }
 });
+// --- END: Updated Password Reset Endpoints ---
+
 
 //ATTENDANCE
 // Endpoint to submit attendance
 app.post('/submitattendance', async (req, res) => {
     let conn;
     try {
-        // *** FIX: Establish connection before using the database ***
         conn = await client.connect();
         const db = conn.db('MSWD');
         const attendanceCollection = db.collection('attendance');
@@ -541,8 +571,7 @@ app.post('/submitattendance', async (req, res) => {
             course: course,
             attendanceData: attendanceData,
         });
-        
-        // *** FIX: Use modern result property 'insertedId' to check for success ***
+
         if (result.insertedId) {
             res.status(200).json({ message: 'Attendance data stored successfully' });
         } else {
@@ -552,7 +581,6 @@ app.post('/submitattendance', async (req, res) => {
         console.error('Error storing attendance data:', error);
         res.status(500).json({ error: 'Internal server error' });
     } finally {
-        // *** FIX: Ensure connection is closed ***
         if(conn) {
             await conn.close();
         }
@@ -608,7 +636,7 @@ app.get('/viewfeedback', async (req, res) => {
       const feedbackCollection = db.collection('feedback');
       const feedbackData = await feedbackCollection.find({}).toArray();
       res.status(200).json(feedbackData);
-      
+
       conn.close();
     } catch (error) {
       console.error('Error fetching feedback data:', error);
@@ -617,8 +645,6 @@ app.get('/viewfeedback', async (req, res) => {
 });
 
 app.post('/submitAssignment', async (req, res) => {
-    // This route needs to handle file uploads, which requires 'multer' or a similar library.
-    // The current setup does not support file uploads.
     // This is a placeholder response.
     res.status(500).json({ success: false, message: 'File upload not implemented on the server.' });
 });
