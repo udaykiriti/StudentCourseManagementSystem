@@ -1,401 +1,292 @@
-import React from 'react';
-import { GraduationCap, Menu, LogOut, User, ChevronRight, ChevronDown, BookOpen, Users, Settings, MessageSquare, ClipboardCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+    BookOpen, User, LogOut, Menu, X, GraduationCap,
+    Users, ClipboardCheck, Settings, Bell, Home
+} from 'lucide-react';
+import { FACULTY_MENU } from './utils/constants';
 
-// API utility functions
-const callApi = async (method, url, data, successCallback, errorCallback) => {
-  try {
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    
-    const result = await response.json();
-    successCallback(JSON.stringify(result));
-  } catch (error) {
-    errorCallback(error);
-  }
-};
+function FacultyHome() {
+    const [userInfo, setUserInfo] = useState({ firstname: '', lastname: '' });
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const navigate = useNavigate();
 
-const errorResponse = (error) => {
-  console.error('API Error:', error);
-  alert('An error occurred. Please try again.');
-};
+    useEffect(() => {
+        const sid = sessionStorage.getItem("sid");
+        const role = sessionStorage.getItem("role");
 
-const getSession = (key) => {
-  return sessionStorage.getItem(key) || '';
-};
-
-const setSession = (key, value, minutes) => {
-  if (minutes < 0) {
-    sessionStorage.removeItem(key);
-  } else {
-    sessionStorage.setItem(key, value);
-  }
-};
-
-// Menu icon mapping for faculty
-const getMenuIcon = (mid) => {
-  switch(mid) {
-    case 'F001': return <BookOpen className="w-4 h-4" />;
-    case 'F101': return <Settings className="w-4 h-4" />;
-    case 'F201': return <Users className="w-4 h-4" />;
-    case 'F301': return <ClipboardCheck className="w-4 h-4" />;
-    case 'F401': return <MessageSquare className="w-4 h-4" />;
-    default: return <Menu className="w-4 h-4" />;
-  }
-};
-
-class FacultyHome extends React.Component {
-    constructor() {
-        super();
-        this.state = {
-            userInfo: { firstname: '', lastname: '' },
-            menuItems: [],
-            subMenus: {},
-            expandedMenus: {},
-            selectedModule: '',
-            titlebarText: '',
-            loading: true,
-            loadingSubMenu: {}
-        };
-        
-        this.sid = getSession("sid");
-        console.log('Session ID:', this.sid); // Debug log
-        
-        if(this.sid === "" || this.sid === null) {
-            console.log('No session found, redirecting to login');
-            window.location.replace("/");
+        if (!sid || role !== 'faculty') {
+            navigate('/');
             return;
         }
 
-        this.loadUserData();
-        this.loadMenuData();
-    }
-
-    loadUserData = () => {
-        const url = "http://localhost:5000/uname";
-        const data = {
-            emailid: this.sid
-        };
-        callApi("POST", url, data, this.loadUname, errorResponse);
-    }
-
-    loadMenuData = () => {
-        const url = "http://localhost:5000/fmenu";
-        callApi("POST", url, "", this.loadFMenu, errorResponse);
-    }
-
-    loadUname = (res) => {
-        try {
-            const data = JSON.parse(res);
-            if (data && data.length > 0) {
-                this.setState({ 
-                    userInfo: { 
-                        firstname: data[0].firstname || '', 
-                        lastname: data[0].lastname || ''
-                    },
-                    loading: false
+        const fetchUserInfo = async () => {
+            try {
+                const response = await fetch("http://localhost:5000/uname", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ emailid: sid })
                 });
-            } else {
-                this.setState({ loading: false });
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    setUserInfo(data[0]);
+                }
+            } catch (error) {
+                console.error("Error fetching user info:", error);
             }
-        } catch (error) {
-            console.error('Error parsing user data:', error);
-            this.setState({ loading: false });
-        }
-    }
-
-    loadFMenu = (res) => {
-        try {
-            const data = JSON.parse(res);
-            this.setState({ menuItems: data || [] });
-        } catch (error) {
-            console.error('Error parsing menu data:', error);
-            this.setState({ menuItems: [] });
-        }
-    }
-
-    showFMenu = (mid) => {
-        // Set loading state for this submenu
-        this.setState(prevState => ({
-            loadingSubMenu: {
-                ...prevState.loadingSubMenu,
-                [mid]: true
-            }
-        }));
-
-        const surl = "http://localhost:5000/fmenus"; 
-        const ipdata = {
-            mid: mid
         };
-        
-        callApi("POST", surl, ipdata, (res) => this.loadFMenus(res, mid), errorResponse);
-        
-        this.setState(prevState => ({
-            expandedMenus: {
-                ...prevState.expandedMenus,
-                [mid]: !prevState.expandedMenus[mid]
-            }
-        }));
+
+        fetchUserInfo();
+    }, [navigate]);
+
+    const handleLogout = () => {
+        sessionStorage.clear();
+        navigate('/');
+    };
+
+    const menuItems = [
+        {
+            id: 'dashboard',
+            label: 'Dashboard',
+            icon: Home
+        },
+        ...FACULTY_MENU.map(item => ({
+            id: item.mid,
+            label: item.mtitle,
+            icon: getMenuIcon(item.mid),
+            submenu: item.subMenus.map(sub => ({
+                id: sub.smid,
+                label: sub.smtitle,
+                icon: BookOpen,
+                path: sub.path
+            }))
+        }))
+    ];
+
+    function getMenuIcon(mid) {
+        const iconMap = {
+            'F001': BookOpen,
+            'F101': Settings,
+            'F201': Users,
+            'F301': ClipboardCheck
+        };
+        return iconMap[mid] || Menu;
     }
 
-    loadFMenus = (res, mid) => {
-        try {
-            const data = JSON.parse(res);
-            this.setState(prevState => ({
-                subMenus: {
-                    ...prevState.subMenus,
-                    [mid]: data || []
-                },
-                loadingSubMenu: {
-                    ...prevState.loadingSubMenu,
-                    [mid]: false
-                }
-            }));
-        } catch (error) {
-            console.error('Error parsing submenu data:', error);
-            this.setState(prevState => ({
-                subMenus: {
-                    ...prevState.subMenus,
-                    [mid]: []
-                },
-                loadingSubMenu: {
-                    ...prevState.loadingSubMenu,
-                    [mid]: false
-                }
-            }));
-        }
-    }
-
-    loadFModule = (smid, smtitle) => {
-        let moduleSrc = "";
-        let titleText = smtitle;
-        
-        switch(smid) {
-            case "F00101":
-                moduleSrc = "/facultycomponents/book";
-                titleText = "Add Course";
-                break;
-            case "F00102":
-                moduleSrc = "/facultycomponents/viewcourses";
-                titleText = "View Courses";
-                break;
-            case "F10101":
-                moduleSrc = "/components/myprofile";
-                titleText = "My Profile";
-                break;
-            case "F10102":
-                moduleSrc = "/components/changepassword";
-                titleText = "Change Password";
-                break;
-            case "F20101":
-                moduleSrc = "/facultycomponents/viewstudent";
-                titleText = "View Student";
-                break;
-            case "F20102":
-                moduleSrc = "/facultycomponents/addstudent";
-                titleText = "Add Student";
-                break;
-            case "F20103":
-                moduleSrc = "/facultycomponents/deletestudent";
-                titleText = "Delete Student";
-                break;
-            case "F30101":
-                moduleSrc = "/facultycomponents/attendance";
-                titleText = "Mark Attendance";
-                break;
-            case "F30102":
-                moduleSrc = "/facultycomponents/viewattendance";
-                titleText = "View Attendance";
-                break;
-            case "F40101":
-                moduleSrc = "/facultycomponents/viewfeedback";
-                titleText = "View Feedback";
-                break;
-            default:
-                moduleSrc = "";
-                titleText = smtitle || "";
-        }
-        
-        this.setState({
-            selectedModule: moduleSrc,
-            titlebarText: titleText
-        });
-    }
-
-    logout = () => {
-        setSession("sid", "", -1);
-        window.location.replace("/");
-    }
-
-    render() {
-        const { 
-            userInfo, 
-            menuItems, 
-            subMenus, 
-            expandedMenus, 
-            selectedModule, 
-            titlebarText, 
-            loading, 
-            loadingSubMenu 
-        } = this.state;
-        
-        if (loading) {
-            return (
-                <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-                    <div className="bg-white p-8 rounded-xl shadow-lg">
-                        <div className="flex items-center space-x-3">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                            <span className="text-gray-700">Loading...</span>
-                        </div>
-                    </div>
-                </div>
-            );
+    const renderContent = () => {
+        if (activeTab === 'dashboard') {
+            return <FacultyDashboard userInfo={userInfo} setActiveTab={setActiveTab} />;
         }
 
         return (
-            <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col">
-                {/* Header */}
-                <div className="bg-white shadow-sm border-b-2 border-blue-600 py-3 px-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                            <GraduationCap className="w-6 h-6 text-blue-600" />
-                            <h1 className="text-xl font-bold text-gray-800">
-                                Student Course Management System
-                            </h1>
-                        </div>
-                        
-                        <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2 text-gray-700">
-                                <User className="w-4 h-4" />
-                                <span className="font-medium text-sm">
-                                    {userInfo.firstname} {userInfo.lastname}
-                                </span>
-                            </div>
-                            <button
-                                onClick={this.logout}
-                                className="flex items-center space-x-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors duration-200"
-                            >
-                                <LogOut className="w-4 h-4" />
-                                <span className="text-sm font-medium">Logout</span>
-                            </button>
-                        </div>
-                    </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center max-w-3xl mx-auto mt-8">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span className="text-3xl">🚧</span>
                 </div>
-
-                {/* Main Content */}
-                <div className="flex-1 flex overflow-hidden">
-                    {/* Sidebar */}
-                    <div className="w-80 bg-white shadow-lg border-r border-gray-200 flex flex-col">
-                        {/* Menu Header */}
-                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4">
-                            <div className="flex items-center space-x-3">
-                                <Menu className="w-5 h-5" />
-                                <h2 className="text-lg font-semibold">Navigation Menu</h2>
-                            </div>
-                        </div>
-                        
-                        {/* Menu Items */}
-                        <div className="flex-1 overflow-y-auto p-4">
-                            <nav className="space-y-2">
-                                {menuItems.map((item) => (
-                                    <div key={item.mid} className="border border-gray-200 rounded-xl overflow-hidden">
-                                        <button
-                                            onClick={() => this.showFMenu(item.mid)}
-                                            className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-blue-50 transition-colors duration-200"
-                                        >
-                                            <div className="flex items-center space-x-3">
-                                                {getMenuIcon(item.mid)}
-                                                <span className="font-medium text-gray-700">
-                                                    {item.mtitle}
-                                                </span>
-                                            </div>
-                                            {expandedMenus[item.mid] ? 
-                                                <ChevronDown className="w-4 h-4 text-gray-500" /> : 
-                                                <ChevronRight className="w-4 h-4 text-gray-500" />
-                                            }
-                                        </button>
-                                        
-                                        {/* Submenu */}
-                                        {expandedMenus[item.mid] && (
-                                            <div className="bg-white border-t border-gray-100">
-                                                {loadingSubMenu[item.mid] ? (
-                                                    <div className="px-8 py-4">
-                                                        <div className="flex items-center space-x-2 text-gray-500 text-sm">
-                                                            <div className="animate-spin rounded-full h-3 w-3 border-b border-gray-400"></div>
-                                                            <span>Loading submenu...</span>
-                                                        </div>
-                                                    </div>
-                                                ) : subMenus[item.mid] && subMenus[item.mid].length > 0 ? (
-                                                    subMenus[item.mid].map((subItem, index) => (
-                                                        <button
-                                                            key={subItem.smid}
-                                                            onClick={() => this.loadFModule(subItem.smid, subItem.smtitle)}
-                                                            className={`w-full text-left px-8 py-3 text-sm text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200 flex items-center justify-between group ${
-                                                                index < subMenus[item.mid].length - 1 ? 'border-b border-gray-50' : ''
-                                                            }`}
-                                                        >
-                                                            <span>{subItem.smtitle}</span>
-                                                            <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                        </button>
-                                                    ))
-                                                ) : (
-                                                    <div className="px-8 py-4 text-sm text-gray-500">
-                                                        No submenu items available
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </nav>
-                        </div>
-                    </div>
-
-                    {/* Main Content Area */}
-                    <div className="flex-1 flex flex-col p-6">
-                        {/* Title Bar */}
-                        {titlebarText && (
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-6 py-4 mb-6">
-                                <h3 className="text-xl font-semibold text-gray-800">
-                                    {titlebarText}
-                                </h3>
-                            </div>
-                        )}
-                        
-                        {/* Module Content */}
-                        <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            {selectedModule ? (
-                                <iframe 
-                                    src={selectedModule}
-                                    title="Module"
-                                    className="w-full h-full border-0"
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-gray-500">
-                                    <div className="text-center">
-                                        <GraduationCap className="w-16 h-16 mx-auto mb-4 text-blue-300" />
-                                        <p className="text-lg font-medium mb-2">Welcome to Faculty Dashboard</p>
-                                        <p className="text-sm">Select a menu item to get started</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="bg-white border-t border-gray-200 py-3 px-6">
-                    <p className="text-center text-gray-600 text-sm">
-                        Copyright @ KL University. All rights reserved.
-                    </p>
-                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">{getPageTitle()}</h2>
+                <p className="text-gray-600 text-lg mb-8">This module is currently under development and will be available soon.</p>
+                <button 
+                    onClick={() => setActiveTab('dashboard')}
+                    className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+                >
+                    Return to Dashboard
+                </button>
             </div>
         );
-    }
+    };
+
+    const getPageTitle = () => {
+        if (activeTab === 'dashboard') return 'Dashboard';
+
+        for (const menu of FACULTY_MENU) {
+            const subItem = menu.subMenus.find(sub => sub.smid === activeTab);
+            if (subItem) return subItem.smtitle;
+        }
+        return 'Dashboard';
+    };
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
+            {/* Sidebar */}
+            <aside className={`fixed left-0 top-0 h-full bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white transition-all duration-300 z-40 ${sidebarOpen ? 'w-72' : 'w-20'
+                }`}>
+                <div className="h-16 flex items-center justify-center border-b border-gray-700">
+                    <div className={`flex items-center space-x-3 ${sidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+                        {sidebarOpen && (
+                            <>
+                                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                                    <GraduationCap className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="font-bold text-lg">Faculty Portal</h1>
+                                    <p className="text-xs text-gray-400">Teaching Dashboard</p>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    {!sidebarOpen && (
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                            <GraduationCap className="w-6 h-6 text-white" />
+                        </div>
+                    )}
+                </div>
+
+                <nav className="flex-1 overflow-y-auto py-4">
+                    <div className="space-y-1 px-3">
+                        {menuItems.map((item) => (
+                            <MenuItem
+                                key={item.id}
+                                item={item}
+                                isOpen={sidebarOpen}
+                                activeTab={activeTab}
+                                setActiveTab={setActiveTab}
+                            />
+                        ))}
+                    </div>
+                </nav>
+            </aside>
+
+            {/* Main Content */}
+            <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'ml-72' : 'ml-20'}`}>
+                <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
+                    <div className="flex items-center space-x-4">
+                        <button
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            {sidebarOpen ? <X className="w-5 h-5 text-gray-600" /> : <Menu className="w-5 h-5 text-gray-600" />}
+                        </button>
+                        <h1 className="text-xl font-semibold text-gray-900">{getPageTitle()}</h1>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                        <button className="p-2 hover:bg-gray-100 rounded-lg relative transition-colors">
+                            <Bell className="w-5 h-5 text-gray-600" />
+                            <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        </button>
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center space-x-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            <span className="text-sm font-medium">Logout</span>
+                        </button>
+                    </div>
+                </header>
+
+                <main className="flex-1 overflow-y-auto p-6">
+                    {renderContent()}
+                </main>
+            </div>
+        </div>
+    );
+}
+
+function MenuItem({ item, isOpen, activeTab, setActiveTab }) {
+    const [expanded, setExpanded] = useState(false);
+    const Icon = item.icon;
+    const hasSubmenu = item.submenu && item.submenu.length > 0;
+
+    return (
+        <div>
+            <button
+                onClick={() => hasSubmenu ? setExpanded(!expanded) : setActiveTab(item.id)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all ${activeTab === item.id && !hasSubmenu
+                        ? 'bg-gradient-to-r from-green-600 to-emerald-600'
+                        : 'hover:bg-gray-800'
+                    }`}
+            >
+                <div className="flex items-center space-x-3">
+                    <Icon className="w-5 h-5" />
+                    {isOpen && <span className="font-medium">{item.label}</span>}
+                </div>
+                {hasSubmenu && isOpen && (
+                    <svg className={`w-4 h-4 transition-transform ${expanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                )}
+            </button>
+
+            {hasSubmenu && expanded && isOpen && (
+                <div className="ml-4 mt-1 space-y-1">
+                    {item.submenu.map((subItem) => {
+                        const SubIcon = subItem.icon;
+                        return (
+                            <button
+                                key={subItem.id}
+                                onClick={() => setActiveTab(subItem.id)}
+                                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all ${activeTab === subItem.id
+                                        ? 'bg-green-600 text-white'
+                                        : 'text-gray-300 hover:bg-gray-800'
+                                    }`}
+                            >
+                                <SubIcon className="w-4 h-4" />
+                                <span>{subItem.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function FacultyDashboard({ userInfo, setActiveTab }) {
+    const quickActions = [
+        { label: 'Create Course', icon: BookOpen, action: 'F00101', gradient: 'from-blue-500 to-blue-600' },
+        { label: 'View Students', icon: Users, action: 'F20101', gradient: 'from-green-500 to-green-600' },
+        { label: 'Mark Attendance', icon: ClipboardCheck, action: 'F30101', gradient: 'from-purple-500 to-purple-600' },
+        { label: 'My Profile', icon: User, action: 'F10101', gradient: 'from-orange-500 to-orange-600' }
+    ];
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl shadow-lg p-6 text-white">
+                <h2 className="text-2xl font-bold mb-2">Welcome back, {userInfo.firstname}!</h2>
+                <p className="text-green-100">Ready to inspire and educate today's students.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard label="My Courses" value="0" icon={BookOpen} />
+                <StatCard label="Total Students" value="0" icon={Users} />
+                <StatCard label="Attendance Today" value="0%" icon={ClipboardCheck} />
+                <StatCard label="Pending Tasks" value="0" icon={Bell} />
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {quickActions.map((action, index) => {
+                        const Icon = action.icon;
+                        return (
+                            <button
+                                key={index}
+                                onClick={() => setActiveTab(action.action)}
+                                className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 text-left"
+                            >
+                                <Icon className="w-6 h-6 mb-2 text-gray-700" />
+                                <p className="font-medium text-gray-900">{action.label}</p>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function StatCard({ label, value, icon: Icon }) {
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Icon className="w-6 h-6 text-gray-700" />
+                </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-1">{label}</p>
+            <p className="text-3xl font-bold text-gray-900">{value}</p>
+        </div>
+    );
 }
 
 export default FacultyHome;

@@ -1,342 +1,239 @@
-import React from 'react';
-import { GraduationCap, Mail, Lock, UserCheck, RefreshCw, Eye, EyeOff } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
-const errorResponse = (error) => {
-  console.error('API Error:', error);
-  alert('An error occurred. Please try again.');
-};
-
-const setSession = (key, value, minutes) => {
-  sessionStorage.setItem(key, value);
-};
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Eye, EyeOff, Mail, Lock, LogIn, RefreshCw, GraduationCap, KeyRound, AlertCircle } from 'lucide-react';
 
 function Login() {
-  const [showRegistration, setShowRegistration] = React.useState(false);
-  const [captcha, setCaptcha] = React.useState('');
-  const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
+  const [emailid, setEmailid] = useState('');
+  const [pwd, setPwd] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [captcha, setCaptcha] = useState('');
+  const [captchaInput, setCaptchaInput] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const generateCaptcha = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let captchaText = '';
+  const generateCaptcha = useCallback(() => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let result = '';
     for (let i = 0; i < 6; i++) {
-      captchaText += chars.charAt(Math.floor(Math.random() * chars.length));
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    setCaptcha(captchaText);
-  };
-
-  React.useEffect(() => {
-    generateCaptcha();
+    setCaptcha(result);
+    setCaptchaInput('');
   }, []);
 
-  const loginSuccess = (res) => {
-    const data = JSON.parse(res);
-    if (data.success) {
-      const T1 = document.getElementById('T1');
-      setSession("sid", T1.value, (24 * 60));
-      switch (data.role) {
-        case 'student':
-          window.location.replace("/studenthome");
-          break;
-        case 'faculty':
-          window.location.replace("/facultyhome");
-          break;
-        case 'admin':
-          window.location.replace("/adminhome");
-          break;
-        default:
-          alert("Invalid Role");
-          break;
+  useEffect(() => {
+    generateCaptcha();
+  }, [generateCaptcha]);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!emailid || !pwd) {
+      setError('Please enter both email and password');
+      return;
+    }
+
+    if (captchaInput !== captcha) {
+      setError('Invalid captcha. Please try again.');
+      generateCaptcha();
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:5000/login/signin", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailid, pwd })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store session data
+        sessionStorage.setItem("sid", emailid);
+        sessionStorage.setItem("role", data.role);
+        sessionStorage.setItem("token", data.token);
+
+        if (data.studentId) sessionStorage.setItem("studentId", data.studentId);
+        if (data.facultyId) sessionStorage.setItem("facultyId", data.facultyId);
+
+        // Check if first login or profile incomplete
+        // Only redirect to profile setup if explicitly needed
+        const needsProfileSetup = (data.isFirstLogin === true) || (data.profileComplete === false);
+
+        if (needsProfileSetup && data.role !== 'admin') {
+          // Redirect to profile completion based on role
+          if (data.role === 'student') {
+            navigate('/student-profile-setup');
+          } else if (data.role === 'faculty') {
+            navigate('/faculty-profile-setup');
+          }
+        } else {
+          // Regular login - redirect to dashboard
+          switch (data.role) {
+            case 'student':
+              navigate('/studenthome');
+              break;
+            case 'faculty':
+              navigate('/facultyhome');
+              break;
+            case 'admin':
+              navigate('/adminhome');
+              break;
+            default:
+              navigate('/studenthome');
+          }
+        }
+      } else {
+        setError(data.message || 'Invalid email or password');
+        generateCaptcha();
       }
-    } else {
-      alert("Invalid Credentials!");
+    } catch (err) {
+      setError('Connection error. Please try again.');
       generateCaptcha();
+    } finally {
+      setIsLoading(false);
     }
   };
-  
-  const registeredSuccess = (res) => {
-    const data = JSON.parse(res);
-    alert(data);
-    setShowRegistration(false); // Switch back to login after successful registration
-  };
-  
-  const validate = () => {
-    const T1 = document.getElementById('T1');
-    const T2 = document.getElementById('T2');
-    const captchaInput = document.getElementById('captchaInput');
-
-    if (!T1.value || !T2.value) {
-      alert('Please fill in all fields');
-      return;
-    }
-
-    if (captchaInput.value !== captcha) {
-      alert('Invalid CAPTCHA');
-      generateCaptcha();
-      captchaInput.value = "";
-      return;
-    }
-
-    const url = "http://localhost:5000/login/signin";
-    const data = JSON.stringify({
-      emailid: T1.value,
-      pwd: T2.value
-    });
-
-    fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: data
-    })
-    .then(response => response.json())
-    .then(data => loginSuccess(JSON.stringify(data)))
-    .catch(error => errorResponse(error));
-  };
-
-  const registration = () => {
-    setShowRegistration(true);
-  };
-
-  const register = () => {
-    const RT1 = document.getElementById('RT1');
-    const RT2 = document.getElementById('RT2');
-    const RT3 = document.getElementById('RT3');
-    const RT4 = document.getElementById('RT4');
-    const RT5 = document.getElementById('RT5');
-    const RT6 = document.getElementById('RT6');
-
-    if (!RT1.value || !RT2.value || !RT3.value || !RT4.value || !RT5.value || !RT6.value) {
-      alert("Please fill in all registration fields.");
-      return;
-    }
-
-    if (RT5.value !== RT6.value) {
-      alert("Passwords do not match.");
-      return;
-    }
-
-    const url = "http://localhost:5000/registration/signup";
-    const data = JSON.stringify({
-      firstname: RT1.value,
-      lastname: RT2.value,
-      contactno: RT3.value,
-      emailid: RT4.value,
-      pwd: RT5.value,
-    });
-    
-    fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: data
-    })
-    .then(response => response.json())
-    .then(data => registeredSuccess(JSON.stringify(data)))
-    .catch(error => errorResponse(error));
-  };
-
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b-2 border-blue-600 py-2 px-4">
-        <div className="flex items-center justify-center space-x-2">
-          <GraduationCap className="w-5 h-5 text-blue-600" />
-          <h1 className="text-lg font-bold text-gray-800">
-            Student Course Management System
-          </h1>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
+        {/* Left Side - Hero / Branding */}
+        <div className="md:w-1/2 bg-blue-600 p-12 flex flex-col justify-between text-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-700"></div>
+          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://images.unsplash.com/photo-1541339907198-e021fc624519?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80')] opacity-10 bg-cover bg-center"></div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-4">
-        {!showRegistration ? (
-          /* Login Form */
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <div className="text-center mb-4">
-              <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full mb-2">
-                <GraduationCap className="w-5 h-5 text-blue-600" />
+          <div className="relative z-10">
+            <div className="flex items-center space-x-3 mb-8">
+              <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                <GraduationCap className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-lg font-bold text-gray-800">Login</h2>
-              <p className="text-gray-600 text-xs">Access your academic portal</p>
+              <span className="text-xl font-bold tracking-tight">University Portal</span>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  <Mail className="inline w-3 h-3 mr-1" />
-                  Email ID*
-                </label>
-                <input
-                  type="text"
-                  id="T1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                  placeholder="Enter email"
-                />
-              </div>
+            <h2 className="text-3xl font-bold leading-tight mb-4">
+              Welcome to the Course Management System
+            </h2>
+            <p className="text-blue-100 text-lg opacity-90">
+              Streamline your academic journey with our centralized platform for students, faculty, and administrators.
+            </p>
+          </div>
 
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                    <label className="block text-xs font-medium text-gray-700">
-                        <Lock className="inline w-3 h-3 mr-1" />
-                        Password*
-                    </label>
-                    <Link to="/forgotpassword" className="text-xs text-blue-600 hover:underline font-medium">
-                        Forgot Password?
-                    </Link>
-                </div>
-                <div className="relative">
-                  <input
-                    type={isPasswordVisible ? 'text' : 'password'}
-                    id="T2"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm pr-10"
-                    placeholder="Enter password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsPasswordVisible(!isPasswordVisible)}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-blue-600"
-                  >
-                    {isPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
+          <div className="relative z-10 text-sm text-blue-200 mt-12">
+            &copy; 2024 University Management System
+          </div>
+        </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  <UserCheck className="inline w-3 h-3 mr-1" />
-                  CAPTCHA*
-                </label>
-                <div className="flex items-center space-x-2">
-                  <div className="px-3 py-2 bg-gray-100 rounded-md text-gray-800 font-mono tracking-widest select-none">
-                    {captcha}
-                  </div>
-                  <button onClick={generateCaptcha} className="p-2 text-gray-600 hover:text-blue-600">
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
+        {/* Right Side - Login Form */}
+        <div className="md:w-1/2 p-8 md:p-12 bg-white">
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-bold text-gray-900">Sign In</h3>
+            <p className="text-gray-500 mt-2">Enter your credentials to access your account</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  type="text"
-                  id="captchaInput"
-                  className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                  placeholder="Enter CAPTCHA"
+                  type="email"
+                  value={emailid}
+                  onChange={(e) => setEmailid(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
+                  placeholder="Enter your university email"
                 />
               </div>
+            </div>
 
-              <button
-                onClick={validate}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm"
-              >
-                Sign In
-              </button>
-
-              <div className="text-center pt-2">
-                <span className="text-gray-600 text-xs">New user? </span>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={pwd}
+                  onChange={(e) => setPwd(e.target.value)}
+                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
+                  placeholder="Enter your password"
+                />
                 <button
-                  onClick={registration}
-                  className="text-blue-600 hover:text-blue-700 font-medium hover:underline text-xs"
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                 >
-                  Register here
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-            </div>
-          </div>
-        ) : (
-          /* Registration Form */
-          <div className="bg-white rounded-lg shadow-xl p-5 w-full max-w-sm">
-            <div className="text-center mb-3">
-              <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full mb-2">
-                <UserCheck className="w-5 h-5 text-blue-600" />
-              </div>
-              <h2 className="text-lg font-bold text-gray-800">Registration</h2>
-              <p className="text-gray-600 text-xs">Create a Student Account</p>
-            </div>
-
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">First Name*</label>
-                <input
-                  type="text"
-                  id="RT1"
-                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                  placeholder="First name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Last Name*</label>
-                <input
-                  type="text"
-                  id="RT2"
-                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                  placeholder="Last name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Contact*</label>
-                <input
-                  type="text"
-                  id="RT3"
-                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                  placeholder="Contact number"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Email ID*</label>
-                <input
-                  type="text"
-                  id="RT4"
-                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                  placeholder="Email address"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Password*</label>
-                <input
-                  type="password"
-                  id="RT5"
-                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                  placeholder="Password"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Confirm Password*</label>
-                <input
-                  type="password"
-                  id="RT6"
-                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                  placeholder="Confirm password"
-                />
+              <div className="flex justify-end mt-2">
+                <Link to="/forgotpassword" className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors flex items-center">
+                  <KeyRound className="w-3 h-3 mr-1" />
+                  Forgot Password?
+                </Link>
               </div>
             </div>
 
-            <div className="pt-3 space-y-2">
-              <button
-                onClick={register}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm"
-              >
-                Register
-              </button>
-              
-              <button
-                onClick={() => setShowRegistration(false)}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors text-sm"
-              >
-                Back to Login
-              </button>
+            {/* Captcha Section */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Security Verification</label>
+              <div className="flex gap-3 mb-3">
+                <div className="flex-1 bg-white border border-gray-200 rounded-lg flex items-center justify-center p-3">
+                  <span className="text-xl font-mono font-bold tracking-widest text-gray-800 select-none decoration-wavy">
+                    {captcha}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={generateCaptcha}
+                  className="p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all text-gray-600"
+                  title="Refresh Captcha"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
+              <input
+                type="text"
+                value={captchaInput}
+                onChange={(e) => setCaptchaInput(e.target.value)}
+                className="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+                placeholder="Type the characters above"
+              />
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Footer */}
-      <div className="bg-white border-t border-gray-200 py-1 px-4">
-        <p className="text-center text-gray-600 text-xs">
-          Copyright @ Student Course Management System. All rights reserved.
-        </p>
+            {error && (
+              <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex justify-center items-center space-x-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <LogIn className="w-5 h-5" />
+                  <span>Sign In</span>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
