@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = 'REACTSCMS_SECRET_KEY_2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'REACTSCMS_SECRET_KEY_2024';
 
 const hashPassword = async (password) => {
     const salt = await bcrypt.genSalt(10);

@@ -1,6 +1,6 @@
 const { MongoClient } = require('mongodb');
 
-const url = "mongodb+srv://admin:admin@cluster0.jlh9clx.mongodb.net/MSWD?retryWrites=true&w=majority&appName=Cluster0";
+const url = process.env.MONGODB_URI;
 const client = new MongoClient(url);
 const dbName = 'MSWD';
 
