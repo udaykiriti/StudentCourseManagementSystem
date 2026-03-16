@@ -111,8 +111,7 @@ router.post('/admin/add-faculty', verifySession, checkRole(ROLES.ADMIN), async (
             success: true,
             message: 'Faculty added successfully',
             facultyId,
-            universityEmail,
-            defaultPassword
+            universityEmail
         });
 
     } catch (err) {

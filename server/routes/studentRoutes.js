@@ -141,8 +141,7 @@ router.post('/admin/add-student', verifySession, checkRole(ROLES.ADMIN), async (
             success: true,
             message: 'Student added successfully',
             studentId,
-            universityEmail,
-            defaultPassword // Send this in response for admin to share
+            universityEmail
         });
 
     } catch (err) {
