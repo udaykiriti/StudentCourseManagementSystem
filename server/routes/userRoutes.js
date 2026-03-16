@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { MongoClient } = require('mongodb');
 const { url } = require('../config/db');
-const { hashPassword } = require('../utils/auth');
+const { hashPassword, comparePassword } = require('../utils/auth');
+const { verifySession } = require('../middleware/auth');
 
-router.post('/uname', async (req, res) => {
+router.post('/uname', verifySession, async (req, res) => {
     let client;
     try {
         client = new MongoClient(url);
@@ -22,7 +23,7 @@ router.post('/uname', async (req, res) => {
     }
 });
 
-router.post('/myprofile/info', async (req, res) => {
+router.post('/myprofile/info', verifySession, async (req, res) => {
     let client;
     try {
         client = new MongoClient(url);
@@ -42,18 +43,33 @@ router.post('/myprofile/info', async (req, res) => {
     }
 });
 
-router.post('/cp/updatepwd', async (req, res) => {
+router.post('/cp/updatepwd', verifySession, async (req, res) => {
     let client;
     try {
-        const { emailid, pwd } = req.body;
-        const hashedPassword = await hashPassword(pwd);
+        const { emailid, oldPassword, pwd } = req.body;
+
+        if (!oldPassword || !pwd) {
+            return res.status(400).json({ error: 'Old password and new password are required' });
+        }
 
         client = new MongoClient(url);
         await client.connect();
         const db = client.db('MSWD');
         const users = db.collection('users');
-        await users.updateOne({ emailid: emailid }, { $set: { pwd: hashedPassword } });
-        res.json("Password has been updated");
+
+        const user = await users.findOne({ emailid });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const isMatch = await comparePassword(oldPassword, user.pwd);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Current password is incorrect' });
+        }
+
+        const hashedPassword = await hashPassword(pwd);
+        await users.updateOne({ emailid }, { $set: { pwd: hashedPassword } });
+        res.json({ message: 'Password has been updated' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     } finally {
