@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { MongoClient } = require('mongodb');
 const { url } = require('../config/db');
+const { verifySession, checkRole, ROLES } = require('../middleware/auth');
 const { hashPassword } = require('../utils/auth');
 const {
     generateStudentId,
@@ -12,7 +13,7 @@ const {
 } = require('../utils/idGenerator');
 
 // Add Student - Manual Entry
-router.post('/admin/add-student', async (req, res) => {
+router.post('/admin/add-student', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         const {
@@ -152,7 +153,7 @@ router.post('/admin/add-student', async (req, res) => {
 });
 
 // Bulk Upload Students
-router.post('/admin/bulk-upload-students', async (req, res) => {
+router.post('/admin/bulk-upload-students', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         const { students: studentsData } = req.body;
@@ -291,7 +292,7 @@ router.post('/admin/bulk-upload-students', async (req, res) => {
 });
 
 // Get all students
-router.get('/admin/students', async (req, res) => {
+router.get('/admin/students', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         const { year, degree, branch, section, search } = req.query;
@@ -329,7 +330,7 @@ router.get('/admin/students', async (req, res) => {
 });
 
 // Get student by ID
-router.get('/admin/students/:id', async (req, res) => {
+router.get('/admin/students/:id', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         client = new MongoClient(url);
@@ -353,7 +354,7 @@ router.get('/admin/students/:id', async (req, res) => {
 });
 
 // Update student
-router.put('/admin/students/:id', async (req, res) => {
+router.put('/admin/students/:id', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         const updates = req.body;
@@ -383,7 +384,7 @@ router.put('/admin/students/:id', async (req, res) => {
 });
 
 // Delete student
-router.delete('/admin/students/:id', async (req, res) => {
+router.delete('/admin/students/:id', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         client = new MongoClient(url);

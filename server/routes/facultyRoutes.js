@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { MongoClient } = require('mongodb');
 const { url } = require('../config/db');
+const { verifySession, checkRole, ROLES } = require('../middleware/auth');
 const { hashPassword } = require('../utils/auth');
 const {
     generateFacultyId,
@@ -11,7 +12,7 @@ const {
 } = require('../utils/idGenerator');
 
 // Add Faculty - Manual Entry
-router.post('/admin/add-faculty', async (req, res) => {
+router.post('/admin/add-faculty', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         const {
@@ -122,7 +123,7 @@ router.post('/admin/add-faculty', async (req, res) => {
 });
 
 // Bulk Upload Faculty
-router.post('/admin/bulk-upload-faculty', async (req, res) => {
+router.post('/admin/bulk-upload-faculty', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         const { faculty: facultyData } = req.body;
@@ -236,7 +237,7 @@ router.post('/admin/bulk-upload-faculty', async (req, res) => {
 });
 
 // Get all faculty
-router.get('/admin/faculty', async (req, res) => {
+router.get('/admin/faculty', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         const { department, designation, search } = req.query;
@@ -271,7 +272,7 @@ router.get('/admin/faculty', async (req, res) => {
 });
 
 // Get faculty by ID
-router.get('/admin/faculty/:id', async (req, res) => {
+router.get('/admin/faculty/:id', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         client = new MongoClient(url);
@@ -295,7 +296,7 @@ router.get('/admin/faculty/:id', async (req, res) => {
 });
 
 // Update faculty
-router.put('/admin/faculty/:id', async (req, res) => {
+router.put('/admin/faculty/:id', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         const updates = req.body;
@@ -325,7 +326,7 @@ router.put('/admin/faculty/:id', async (req, res) => {
 });
 
 // Delete faculty
-router.delete('/admin/faculty/:id', async (req, res) => {
+router.delete('/admin/faculty/:id', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
     let client;
     try {
         client = new MongoClient(url);
