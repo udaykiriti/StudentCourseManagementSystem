@@ -310,11 +310,12 @@ router.get('/admin/students', verifySession, checkRole(ROLES.ADMIN), async (req,
         if (section) query['academic.section'] = section;
 
         if (search) {
+            const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             query.$or = [
-                { studentId: new RegExp(search, 'i') },
-                { 'personal.firstName': new RegExp(search, 'i') },
-                { 'personal.lastName': new RegExp(search, 'i') },
-                { 'contact.primaryMobile': new RegExp(search, 'i') }
+                { studentId: new RegExp(escaped, 'i') },
+                { 'personal.firstName': new RegExp(escaped, 'i') },
+                { 'personal.lastName': new RegExp(escaped, 'i') },
+                { 'contact.primaryMobile': new RegExp(escaped, 'i') }
             ];
         }
 

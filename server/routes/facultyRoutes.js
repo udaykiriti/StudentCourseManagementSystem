@@ -253,10 +253,11 @@ router.get('/admin/faculty', verifySession, checkRole(ROLES.ADMIN), async (req, 
         if (designation) query['professional.designation'] = designation;
 
         if (search) {
+            const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             query.$or = [
-                { facultyId: new RegExp(search, 'i') },
-                { 'personal.firstName': new RegExp(search, 'i') },
-                { 'personal.lastName': new RegExp(search, 'i') }
+                { facultyId: new RegExp(escaped, 'i') },
+                { 'personal.firstName': new RegExp(escaped, 'i') },
+                { 'personal.lastName': new RegExp(escaped, 'i') }
             ];
         }
 
