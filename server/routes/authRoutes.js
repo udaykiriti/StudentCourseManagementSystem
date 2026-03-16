@@ -21,7 +21,12 @@ router.post('/login/signin', async (req, res) => {
 
         let isMatch = false;
         if (user.pwd && !user.pwd.startsWith('$2a$') && !user.pwd.startsWith('$2b$')) {
+            // Legacy plaintext password — compare and migrate to hashed
             isMatch = user.pwd === req.body.pwd;
+            if (isMatch) {
+                const hashedPwd = await hashPassword(req.body.pwd);
+                await users.updateOne({ emailid: req.body.emailid }, { $set: { pwd: hashedPwd } });
+            }
         } else {
             isMatch = await comparePassword(req.body.pwd, user.pwd);
         }
