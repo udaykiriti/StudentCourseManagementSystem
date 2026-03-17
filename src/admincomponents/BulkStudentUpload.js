@@ -99,9 +99,13 @@ function BulkStudentUpload({ onSuccess }) {
             }
 
             // Send to backend
+            const token = sessionStorage.getItem('token');
             const response = await fetch('http://localhost:5000/admin/bulk-upload-students', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ students })
             });
 

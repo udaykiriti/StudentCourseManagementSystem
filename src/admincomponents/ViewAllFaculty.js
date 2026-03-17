@@ -25,7 +25,10 @@ function ViewAllFaculty() {
     const fetchFaculty = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/admin/faculty');
+            const token = sessionStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/admin/faculty', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const data = await response.json();
 
             if (data.success) {
@@ -68,8 +71,10 @@ function ViewAllFaculty() {
         }
 
         try {
+            const token = sessionStorage.getItem('token');
             const response = await fetch(`http://localhost:5000/admin/faculty/${facultyId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
             const data = await response.json();

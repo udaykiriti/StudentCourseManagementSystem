@@ -1,16 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { getClient, url } = require('../config/db');
-const { MongoClient } = require('mongodb');
+const { getDB } = require('../config/db');
 const { generateOTP, storeOTP, verifyOTP, clearOTP, sendEmail } = require('../utils/helpers');
 const { hashPassword, comparePassword, generateToken } = require('../utils/auth');
 
 router.post('/login/signin', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const users = db.collection('users');
 
         const user = await users.findOne({ emailid: req.body.emailid });
@@ -56,22 +52,17 @@ router.post('/login/signin', async (req, res) => {
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.post('/sendotp', async (req, res) => {
-    let client;
     try {
         const email = req.body.emailid;
         if (!email) {
             return res.status(400).json({ error: 'Email ID is required' });
         }
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const users = db.collection('users');
         const user = await users.findOne({ emailid: email });
 
@@ -85,13 +76,10 @@ router.post('/sendotp', async (req, res) => {
         res.json({ message: 'OTP sent successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.post('/resetpassword', async (req, res) => {
-    let client;
     try {
         const { emailid, otp, newPassword } = req.body;
         const otpResult = verifyOTP(emailid, otp);
@@ -106,29 +94,22 @@ router.post('/resetpassword', async (req, res) => {
 
         const hashedPassword = await hashPassword(newPassword);
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const users = db.collection('users');
         await users.updateOne({ emailid: emailid }, { $set: { pwd: hashedPassword } });
         clearOTP(emailid);
         res.json({ message: 'Password reset successful' });
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Complete first login profile
 router.post('/complete-profile', async (req, res) => {
-    let client;
     try {
         const { emailid, role } = req.body;
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const users = db.collection('users');
 
         await users.updateOne(
@@ -145,8 +126,6 @@ router.post('/complete-profile', async (req, res) => {
         res.json({ success: true, message: 'Profile completed successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 

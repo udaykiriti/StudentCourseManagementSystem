@@ -27,7 +27,10 @@ function ViewAllStudents() {
     const fetchStudents = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/admin/students');
+            const token = sessionStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/admin/students', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const data = await response.json();
 
             if (data.success) {
@@ -83,8 +86,10 @@ function ViewAllStudents() {
         }
 
         try {
+            const token = sessionStorage.getItem('token');
             const response = await fetch(`http://localhost:5000/admin/students/${studentId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
             const data = await response.json();

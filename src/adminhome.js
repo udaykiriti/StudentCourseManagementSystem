@@ -38,9 +38,11 @@ function AdminHome() {
 
     const fetchStats = async () => {
         try {
+            const token = sessionStorage.getItem('token');
+            const authHeaders = { 'Authorization': `Bearer ${token}` };
             const [studentsRes, facultyRes] = await Promise.all([
-                fetch('http://localhost:5000/admin/students'),
-                fetch('http://localhost:5000/admin/faculty')
+                fetch('http://localhost:5000/admin/students', { headers: authHeaders }),
+                fetch('http://localhost:5000/admin/faculty', { headers: authHeaders })
             ]);
 
             const studentsData = await studentsRes.json();

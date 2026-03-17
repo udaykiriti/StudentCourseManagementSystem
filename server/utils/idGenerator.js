@@ -1,48 +1,39 @@
-const { MongoClient } = require('mongodb');
-const { url } = require('../config/db');
+const { getDB } = require('../config/db');
 
 /**
  * Generate Student ID: STU-YY-DDD-BBBB-NNN
  * Example: STU-22-BTE-CSEN-047
  */
 async function generateStudentId(admissionYear, degreeCode, branchCode) {
-    const client = new MongoClient(url);
+    const db = getDB();
+    const students = db.collection('students');
 
-    try {
-        await client.connect();
-        const db = client.db('MSWD');
-        const students = db.collection('students');
+    // Get last 2 digits of year
+    const yy = admissionYear.toString().slice(-2);
 
-        // Get last 2 digits of year
-        const yy = admissionYear.toString().slice(-2);
+    // Create prefix: STU-YY-DDD-BBBB
+    const prefix = `STU-${yy}-${degreeCode}-${branchCode}`;
 
-        // Create prefix: STU-YY-DDD-BBBB
-        const prefix = `STU-${yy}-${degreeCode}-${branchCode}`;
+    // Find the last student with this prefix
+    const lastStudent = await students
+        .find({ studentId: new RegExp(`^${prefix}`) })
+        .sort({ studentId: -1 })
+        .limit(1)
+        .toArray();
 
-        // Find the last student with this prefix
-        const lastStudent = await students
-            .find({ studentId: new RegExp(`^${prefix}`) })
-            .sort({ studentId: -1 })
-            .limit(1)
-            .toArray();
+    let sequentialNumber = 1;
 
-        let sequentialNumber = 1;
-
-        if (lastStudent.length > 0) {
-            // Extract the last 3 digits and increment
-            const lastId = lastStudent[0].studentId;
-            const lastSeq = parseInt(lastId.slice(-3));
-            sequentialNumber = lastSeq + 1;
-        }
-
-        // Format sequential number with leading zeros (001, 002, etc.)
-        const seqStr = sequentialNumber.toString().padStart(3, '0');
-
-        return `${prefix}-${seqStr}`;
-
-    } finally {
-        await client.close();
+    if (lastStudent.length > 0) {
+        // Extract the last 3 digits and increment
+        const lastId = lastStudent[0].studentId;
+        const lastSeq = parseInt(lastId.slice(-3));
+        sequentialNumber = lastSeq + 1;
     }
+
+    // Format sequential number with leading zeros (001, 002, etc.)
+    const seqStr = sequentialNumber.toString().padStart(3, '0');
+
+    return `${prefix}-${seqStr}`;
 }
 
 /**
@@ -50,38 +41,30 @@ async function generateStudentId(admissionYear, degreeCode, branchCode) {
  * Example: FAC-2020-CSE-012
  */
 async function generateFacultyId(joiningYear, departmentCode) {
-    const client = new MongoClient(url);
+    const db = getDB();
+    const faculty = db.collection('faculty');
 
-    try {
-        await client.connect();
-        const db = client.db('MSWD');
-        const faculty = db.collection('faculty');
+    // Create prefix: FAC-YYYY-DDD
+    const prefix = `FAC-${joiningYear}-${departmentCode}`;
 
-        // Create prefix: FAC-YYYY-DDD
-        const prefix = `FAC-${joiningYear}-${departmentCode}`;
+    // Find the last faculty with this prefix
+    const lastFaculty = await faculty
+        .find({ facultyId: new RegExp(`^${prefix}`) })
+        .sort({ facultyId: -1 })
+        .limit(1)
+        .toArray();
 
-        // Find the last faculty with this prefix
-        const lastFaculty = await faculty
-            .find({ facultyId: new RegExp(`^${prefix}`) })
-            .sort({ facultyId: -1 })
-            .limit(1)
-            .toArray();
+    let sequentialNumber = 1;
 
-        let sequentialNumber = 1;
-
-        if (lastFaculty.length > 0) {
-            const lastId = lastFaculty[0].facultyId;
-            const lastSeq = parseInt(lastId.slice(-3));
-            sequentialNumber = lastSeq + 1;
-        }
-
-        const seqStr = sequentialNumber.toString().padStart(3, '0');
-
-        return `${prefix}-${seqStr}`;
-
-    } finally {
-        await client.close();
+    if (lastFaculty.length > 0) {
+        const lastId = lastFaculty[0].facultyId;
+        const lastSeq = parseInt(lastId.slice(-3));
+        sequentialNumber = lastSeq + 1;
     }
+
+    const seqStr = sequentialNumber.toString().padStart(3, '0');
+
+    return `${prefix}-${seqStr}`;
 }
 
 /**

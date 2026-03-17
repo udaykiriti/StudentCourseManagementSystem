@@ -1,16 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { MongoClient } = require('mongodb');
-const { url } = require('../config/db');
+const { getDB } = require('../config/db');
 const { hashPassword, comparePassword } = require('../utils/auth');
 const { verifySession } = require('../middleware/auth');
 
 router.post('/uname', verifySession, async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const users = db.collection('users');
         const data = await users.find({ emailid: req.body.emailid }, {
             projection: { firstname: 1, lastname: 1, _id: 0 }
@@ -18,17 +14,12 @@ router.post('/uname', verifySession, async (req, res) => {
         res.json(data);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.post('/myprofile/info', verifySession, async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const users = db.collection('users');
         const userData = await users.findOne({ emailid: req.body.emailid });
         if (userData) {
@@ -38,13 +29,10 @@ router.post('/myprofile/info', verifySession, async (req, res) => {
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.post('/cp/updatepwd', verifySession, async (req, res) => {
-    let client;
     try {
         const { emailid, oldPassword, pwd } = req.body;
 
@@ -52,9 +40,7 @@ router.post('/cp/updatepwd', verifySession, async (req, res) => {
             return res.status(400).json({ error: 'Old password and new password are required' });
         }
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const users = db.collection('users');
 
         const user = await users.findOne({ emailid });
@@ -72,8 +58,6 @@ router.post('/cp/updatepwd', verifySession, async (req, res) => {
         res.json({ message: 'Password has been updated' });
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
