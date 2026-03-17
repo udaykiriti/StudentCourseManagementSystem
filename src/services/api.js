@@ -1,11 +1,21 @@
 const API_BASE_URL = 'http://localhost:5000';
 
+// Helper to get auth headers with JWT token
+const getAuthHeaders = () => {
+    const token = sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+};
+
 export const api = {
     post: async (endpoint, data) => {
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(data)
             });
             return await response.json();
@@ -17,7 +27,9 @@ export const api = {
 
     get: async (endpoint) => {
         try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`);
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                headers: getAuthHeaders()
+            });
             return await response.json();
         } catch (error) {
             console.error('API Error:', error);
@@ -29,7 +41,7 @@ export const api = {
         try {
             const options = {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' }
+                headers: getAuthHeaders()
             };
             if (data) {
                 options.body = JSON.stringify(data);
@@ -46,7 +58,7 @@ export const api = {
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(data)
             });
             return await response.json();
@@ -56,6 +68,9 @@ export const api = {
         }
     }
 };
+
+// Export for use in components that make direct fetch calls
+export { getAuthHeaders, API_BASE_URL };
 
 export const AUTH_ENDPOINTS = {
     LOGIN: '/login/signin',

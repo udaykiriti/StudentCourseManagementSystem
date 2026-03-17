@@ -115,9 +115,13 @@ function AddFacultyManual({ onSuccess }) {
         setIsSubmitting(true);
 
         try {
+            const token = sessionStorage.getItem('token');
             const response = await fetch('http://localhost:5000/admin/add-faculty', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     ...formData,
                     qualifications: qualifications.filter(q => q.degree)

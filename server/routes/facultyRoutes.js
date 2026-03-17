@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { MongoClient } = require('mongodb');
-const { url } = require('../config/db');
+const { getDB } = require('../config/db');
 const { verifySession, checkRole, ROLES } = require('../middleware/auth');
 const { hashPassword } = require('../utils/auth');
 const {
@@ -13,7 +12,6 @@ const {
 
 // Add Faculty - Manual Entry
 router.post('/admin/add-faculty', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
-    let client;
     try {
         const {
             joiningYear, department, designation, employeeType,
@@ -22,9 +20,7 @@ router.post('/admin/add-faculty', verifySession, checkRole(ROLES.ADMIN), async (
             qualifications
         } = req.body;
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const faculty = db.collection('faculty');
         const users = db.collection('users');
 
@@ -116,14 +112,11 @@ router.post('/admin/add-faculty', verifySession, checkRole(ROLES.ADMIN), async (
 
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Bulk Upload Faculty
 router.post('/admin/bulk-upload-faculty', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
-    let client;
     try {
         const { faculty: facultyData } = req.body;
 
@@ -131,9 +124,7 @@ router.post('/admin/bulk-upload-faculty', verifySession, checkRole(ROLES.ADMIN),
             return res.status(400).json({ error: 'Invalid data format' });
         }
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const facultyCollection = db.collection('faculty');
         const usersCollection = db.collection('users');
 
@@ -230,20 +221,15 @@ router.post('/admin/bulk-upload-faculty', verifySession, checkRole(ROLES.ADMIN),
 
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Get all faculty
 router.get('/admin/faculty', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
-    let client;
     try {
         const { department, designation, search } = req.query;
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const faculty = db.collection('faculty');
 
         let query = {};
@@ -266,18 +252,13 @@ router.get('/admin/faculty', verifySession, checkRole(ROLES.ADMIN), async (req, 
 
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Get faculty by ID
 router.get('/admin/faculty/:id', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const faculty = db.collection('faculty');
 
         const facultyMember = await faculty.findOne({ facultyId: req.params.id });
@@ -290,20 +271,15 @@ router.get('/admin/faculty/:id', verifySession, checkRole(ROLES.ADMIN), async (r
 
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Update faculty
 router.put('/admin/faculty/:id', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
-    let client;
     try {
         const updates = req.body;
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const faculty = db.collection('faculty');
 
         await faculty.updateOne(
@@ -320,18 +296,13 @@ router.put('/admin/faculty/:id', verifySession, checkRole(ROLES.ADMIN), async (r
 
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Delete faculty
 router.delete('/admin/faculty/:id', verifySession, checkRole(ROLES.ADMIN), async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const faculty = db.collection('faculty');
         const users = db.collection('users');
 
@@ -348,8 +319,6 @@ router.delete('/admin/faculty/:id', verifySession, checkRole(ROLES.ADMIN), async
 
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 

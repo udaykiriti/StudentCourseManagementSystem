@@ -1,14 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { MongoClient } = require('mongodb');
-const { url } = require('../config/db');
+const { getDB } = require('../config/db');
 
 router.post('/submitattendance', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const attendanceCollection = db.collection('attendance');
         const { course, attendanceData } = req.body;
         const result = await attendanceCollection.insertOne({
@@ -23,17 +19,12 @@ router.post('/submitattendance', async (req, res) => {
         }
     } catch (error) {
         res.status(500).json({ error: 'Internal server error' });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.get('/viewattendance', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const attendanceCollection = db.collection('attendance');
         const attendanceData = await attendanceCollection.find().toArray();
         const formattedAttendanceData = attendanceData.map(item => ({
@@ -44,8 +35,6 @@ router.get('/viewattendance', async (req, res) => {
         res.json(formattedAttendanceData);
     } catch (err) {
         res.status(500).json({ error: 'Internal server error' });
-    } finally {
-        if (client) await client.close();
     }
 });
 

@@ -1,17 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { MongoClient } = require('mongodb');
-const { url } = require('../config/db');
+const { getDB } = require('../config/db');
 
 // Student Profile Setup
 router.post('/student/profile/setup', async (req, res) => {
-    let client;
     try {
         const { studentId, profile } = req.body;
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const students = db.collection('students');
         const users = db.collection('users');
 
@@ -44,20 +40,15 @@ router.post('/student/profile/setup', async (req, res) => {
 
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Faculty Profile Setup
 router.post('/faculty/profile/setup', async (req, res) => {
-    let client;
     try {
         const { facultyId, profile } = req.body;
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const faculty = db.collection('faculty');
         const users = db.collection('users');
 
@@ -90,18 +81,13 @@ router.post('/faculty/profile/setup', async (req, res) => {
 
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Get Student Profile
 router.get('/student/profile/:studentId', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const students = db.collection('students');
 
         const student = await students.findOne({ studentId: req.params.studentId });
@@ -114,18 +100,13 @@ router.get('/student/profile/:studentId', async (req, res) => {
 
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Get Faculty Profile
 router.get('/faculty/profile/:facultyId', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const faculty = db.collection('faculty');
 
         const facultyMember = await faculty.findOne({ facultyId: req.params.facultyId });
@@ -138,20 +119,15 @@ router.get('/faculty/profile/:facultyId', async (req, res) => {
 
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Update Student Profile
 router.put('/student/profile/:studentId', async (req, res) => {
-    let client;
     try {
         const { profile } = req.body;
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const students = db.collection('students');
 
         await students.updateOne(
@@ -168,20 +144,15 @@ router.put('/student/profile/:studentId', async (req, res) => {
 
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 // Update Faculty Profile
 router.put('/faculty/profile/:facultyId', async (req, res) => {
-    let client;
     try {
         const { profile } = req.body;
 
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const faculty = db.collection('faculty');
 
         await faculty.updateOne(
@@ -198,8 +169,6 @@ router.put('/faculty/profile/:facultyId', async (req, res) => {
 
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 

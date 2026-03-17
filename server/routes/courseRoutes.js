@@ -1,14 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { MongoClient, ObjectId } = require('mongodb');
-const { url } = require('../config/db');
+const { ObjectId } = require('mongodb');
+const { getDB } = require('../config/db');
 
 router.post('/book/addnewcourse', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const courses = db.collection('addnewcourse');
         const existingCourse = await courses.findOne({
             $or: [{ courseCode: req.body.courseCode }, { courseName: req.body.courseName }]
@@ -20,33 +17,23 @@ router.post('/book/addnewcourse', async (req, res) => {
         res.json("Course added successfully...");
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.get('/viewcourses', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const courses = db.collection('addnewcourse');
         const courseData = await courses.find().toArray();
         res.json(courseData.length > 0 ? courseData : []);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.get('/coursenames', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const courses = db.collection('addnewcourse');
         const courseData = await courses.find({}, {
             projection: { _id: 0, courseName: 1, sectionNumber: 1, facultyName: 1, semester: 1, year: 1, description: 1 }
@@ -54,33 +41,23 @@ router.get('/coursenames', async (req, res) => {
         res.json(courseData.length > 0 ? courseData : []);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.post('/addcourse', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const courses = db.collection('addcourse');
         await courses.insertOne(req.body);
         res.json("Course added successfully...");
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.delete('/deletecourse', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const courses = db.collection('addnewcourse');
         const { courseName } = req.body;
         const result = await courses.deleteOne({ courseName: courseName });
@@ -91,17 +68,12 @@ router.delete('/deletecourse', async (req, res) => {
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.delete('/deletecourse/:id', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const courses = db.collection('addcourse');
         const result = await courses.deleteOne({ _id: new ObjectId(req.params.id) });
         if (result.deletedCount === 1) {
@@ -111,24 +83,17 @@ router.delete('/deletecourse/:id', async (req, res) => {
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
 router.get('/studentcourse', async (req, res) => {
-    let client;
     try {
-        client = new MongoClient(url);
-        await client.connect();
-        const db = client.db('MSWD');
+        const db = getDB();
         const courses = db.collection('addcourse');
         const courseData = await courses.find().toArray();
         res.json(courseData.length > 0 ? courseData : []);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (client) await client.close();
     }
 });
 
